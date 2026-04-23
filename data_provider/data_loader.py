@@ -216,13 +216,15 @@ class Dataset_ETT_hour_PCA(Dataset_ETT_hour):
             return
 
         print("Fitting PCA ...")
-        if self.load_from_disk and os.path.exists(os.path.join(self.load_from_disk, 'pca_components.npy')):
-            self.input_components = np.load(os.path.join(self.load_from_disk, 'input_components.npy'))
-            self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input_initializer.npy'))
-            self.input_weights = np.load(os.path.join(self.load_from_disk, 'input_weights.npy'))
-            self.pca_components = np.load(os.path.join(self.load_from_disk, 'pca_components.npy'))
-            self.initializer = np.load(os.path.join(self.load_from_disk, 'initializer.npy'))
-            self.weights = np.load(os.path.join(self.load_from_disk, 'weights.npy'))
+        if self.load_from_disk:
+            if os.path.exists(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy')):
+                self.input_components = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy'))
+                self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'initializer.npy'))
+                self.input_weights = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'weights.npy'))
+            if os.path.exists(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy')):
+                self.pca_components = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'))
+                self.initializer = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'))
+                self.weights = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'))
         else:
             input_seq, label_seq = [], []
             for i in range(self.__len__()):
@@ -235,12 +237,14 @@ class Dataset_ETT_hour_PCA(Dataset_ETT_hour):
             self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
-                np.save(os.path.join(self.load_from_disk, 'input_components.npy'), self.input_components)
-                np.save(os.path.join(self.load_from_disk, 'input_initializer.npy'), self.input_initializer)
-                np.save(os.path.join(self.load_from_disk, 'input_weights.npy'), self.input_weights)
-                np.save(os.path.join(self.load_from_disk, 'pca_components.npy'), self.pca_components)
-                np.save(os.path.join(self.load_from_disk, 'initializer.npy'), self.initializer)
-                np.save(os.path.join(self.load_from_disk, 'weights.npy'), self.weights)
+                os.makedirs(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}"), exist_ok=True)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy'), self.input_components)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'initializer.npy'), self.input_initializer)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'weights.npy'), self.input_weights)
+                os.makedirs(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}"), exist_ok=True)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'), self.pca_components)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'), self.initializer)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'), self.weights)
 
         if input_rank_ratio and input_rank_ratio <= 1.0:
             full_rank = self.input_weights.shape[-1]
@@ -456,13 +460,15 @@ class Dataset_ETT_minute_PCA(Dataset_ETT_minute):
             return
 
         print("Fitting PCA ...")
-        if self.load_from_disk and os.path.exists(os.path.join(self.load_from_disk, 'pca_components.npy')):
-            self.input_components = np.load(os.path.join(self.load_from_disk, 'input_components.npy'))
-            self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input_initializer.npy'))
-            self.input_weights = np.load(os.path.join(self.load_from_disk, 'input_weights.npy'))
-            self.pca_components = np.load(os.path.join(self.load_from_disk, 'pca_components.npy'))
-            self.initializer = np.load(os.path.join(self.load_from_disk, 'initializer.npy'))
-            self.weights = np.load(os.path.join(self.load_from_disk, 'weights.npy'))
+        if self.load_from_disk:
+            if os.path.exists(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy')):
+                self.input_components = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy'))
+                self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'initializer.npy'))
+                self.input_weights = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'weights.npy'))
+            if os.path.exists(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy')):
+                self.pca_components = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'))
+                self.initializer = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'))
+                self.weights = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'))
         else:
             input_seq, label_seq = [], []
             for i in range(self.__len__()):
@@ -475,12 +481,14 @@ class Dataset_ETT_minute_PCA(Dataset_ETT_minute):
             self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
-                np.save(os.path.join(self.load_from_disk, 'input_components.npy'), self.input_components)
-                np.save(os.path.join(self.load_from_disk, 'input_initializer.npy'), self.input_initializer)
-                np.save(os.path.join(self.load_from_disk, 'input_weights.npy'), self.input_weights)
-                np.save(os.path.join(self.load_from_disk, 'pca_components.npy'), self.pca_components)
-                np.save(os.path.join(self.load_from_disk, 'initializer.npy'), self.initializer)
-                np.save(os.path.join(self.load_from_disk, 'weights.npy'), self.weights)
+                os.makedirs(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}"), exist_ok=True)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy'), self.input_components)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'initializer.npy'), self.input_initializer)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'weights.npy'), self.input_weights)
+                os.makedirs(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}"), exist_ok=True)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'), self.pca_components)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'), self.initializer)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'), self.weights)
 
         if input_rank_ratio and input_rank_ratio <= 1.0:
             full_rank = self.input_weights.shape[-1]
@@ -740,13 +748,15 @@ class Dataset_Custom_PCA(Dataset_Custom):
             return
 
         print("Fitting PCA ...")
-        if self.load_from_disk and os.path.exists(os.path.join(self.load_from_disk, 'pca_components.npy')):
-            self.input_components = np.load(os.path.join(self.load_from_disk, 'input_components.npy'))
-            self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input_initializer.npy'))
-            self.input_weights = np.load(os.path.join(self.load_from_disk, 'input_weights.npy'))
-            self.pca_components = np.load(os.path.join(self.load_from_disk, 'pca_components.npy'))
-            self.initializer = np.load(os.path.join(self.load_from_disk, 'initializer.npy'))
-            self.weights = np.load(os.path.join(self.load_from_disk, 'weights.npy'))
+        if self.load_from_disk:
+            if os.path.exists(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy')):
+                self.input_components = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy'))
+                self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'initializer.npy'))
+                self.input_weights = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'weights.npy'))
+            if os.path.exists(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy')):
+                self.pca_components = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'))
+                self.initializer = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'))
+                self.weights = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'))
         else:
             input_seq, label_seq = [], []
             for i in range(self.__len__()):
@@ -759,12 +769,14 @@ class Dataset_Custom_PCA(Dataset_Custom):
             self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
-                np.save(os.path.join(self.load_from_disk, 'input_components.npy'), self.input_components)
-                np.save(os.path.join(self.load_from_disk, 'input_initializer.npy'), self.input_initializer)
-                np.save(os.path.join(self.load_from_disk, 'input_weights.npy'), self.input_weights)
-                np.save(os.path.join(self.load_from_disk, 'pca_components.npy'), self.pca_components)
-                np.save(os.path.join(self.load_from_disk, 'initializer.npy'), self.initializer)
-                np.save(os.path.join(self.load_from_disk, 'weights.npy'), self.weights)
+                os.makedirs(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}"), exist_ok=True)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy'), self.input_components)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'initializer.npy'), self.input_initializer)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'weights.npy'), self.input_weights)
+                os.makedirs(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}"), exist_ok=True)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'), self.pca_components)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'), self.initializer)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'), self.weights)
 
         if input_rank_ratio and input_rank_ratio <= 1.0:
             full_rank = self.input_weights.shape[-1]
@@ -1202,13 +1214,15 @@ class Dataset_PEMS_PCA(Dataset_PEMS):
             return
 
         print("Fitting PCA ...")
-        if self.load_from_disk and os.path.exists(os.path.join(self.load_from_disk, 'pca_components.npy')):
-            self.input_components = np.load(os.path.join(self.load_from_disk, 'input_components.npy'))
-            self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input_initializer.npy'))
-            self.input_weights = np.load(os.path.join(self.load_from_disk, 'input_weights.npy'))
-            self.pca_components = np.load(os.path.join(self.load_from_disk, 'pca_components.npy'))
-            self.initializer = np.load(os.path.join(self.load_from_disk, 'initializer.npy'))
-            self.weights = np.load(os.path.join(self.load_from_disk, 'weights.npy'))
+        if self.load_from_disk:
+            if os.path.exists(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy')):
+                self.input_components = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy'))
+                self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'initializer.npy'))
+                self.input_weights = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'weights.npy'))
+            if os.path.exists(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy')):
+                self.pca_components = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'))
+                self.initializer = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'))
+                self.weights = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'))
         else:
             input_seq, label_seq = [], []
             for i in range(self.__len__()):
@@ -1221,12 +1235,14 @@ class Dataset_PEMS_PCA(Dataset_PEMS):
             self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, input_rank_ratio, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
-                np.save(os.path.join(self.load_from_disk, 'input_components.npy'), self.input_components)
-                np.save(os.path.join(self.load_from_disk, 'input_initializer.npy'), self.input_initializer)
-                np.save(os.path.join(self.load_from_disk, 'input_weights.npy'), self.input_weights)
-                np.save(os.path.join(self.load_from_disk, 'pca_components.npy'), self.pca_components)
-                np.save(os.path.join(self.load_from_disk, 'initializer.npy'), self.initializer)
-                np.save(os.path.join(self.load_from_disk, 'weights.npy'), self.weights)
+                os.makedirs(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}"), exist_ok=True)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy'), self.input_components)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'initializer.npy'), self.input_initializer)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'weights.npy'), self.input_weights)
+                os.makedirs(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}"), exist_ok=True)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'), self.pca_components)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'), self.initializer)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'), self.weights)
 
         if input_rank_ratio and input_rank_ratio <= 1.0:
             full_rank = self.input_weights.shape[-1]
@@ -1486,13 +1502,15 @@ class Dataset_M4_PCA(Dataset_M4):
             return
 
         print("Fitting PCA ...")
-        if self.load_from_disk and os.path.exists(os.path.join(self.load_from_disk, 'pca_components.npy')):
-            self.input_components = np.load(os.path.join(self.load_from_disk, 'input_components.npy'))
-            self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input_initializer.npy'))
-            self.input_weights = np.load(os.path.join(self.load_from_disk, 'input_weights.npy'))
-            self.pca_components = np.load(os.path.join(self.load_from_disk, 'pca_components.npy'))
-            self.initializer = np.load(os.path.join(self.load_from_disk, 'initializer.npy'))
-            self.weights = np.load(os.path.join(self.load_from_disk, 'weights.npy'))
+        if self.load_from_disk:
+            if os.path.exists(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy')):
+                self.input_components = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy'))
+                self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'initializer.npy'))
+                self.input_weights = np.load(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'weights.npy'))
+            if os.path.exists(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy')):
+                self.pca_components = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'))
+                self.initializer = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'))
+                self.weights = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'))
         else:
             input_seq, label_seq = [], []
             for i in range(self.__len__()):
@@ -1505,12 +1523,14 @@ class Dataset_M4_PCA(Dataset_M4):
             self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, input_rank_ratio, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
-                np.save(os.path.join(self.load_from_disk, 'input_components.npy'), self.input_components)
-                np.save(os.path.join(self.load_from_disk, 'input_initializer.npy'), self.input_initializer)
-                np.save(os.path.join(self.load_from_disk, 'input_weights.npy'), self.input_weights)
-                np.save(os.path.join(self.load_from_disk, 'pca_components.npy'), self.pca_components)
-                np.save(os.path.join(self.load_from_disk, 'initializer.npy'), self.initializer)
-                np.save(os.path.join(self.load_from_disk, 'weights.npy'), self.weights)
+                os.makedirs(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}"), exist_ok=True)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'pca_components.npy'), self.input_components)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'initializer.npy'), self.input_initializer)
+                np.save(os.path.join(self.load_from_disk, 'input', f"{self.seq_len}", 'weights.npy'), self.input_weights)
+                os.makedirs(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}"), exist_ok=True)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'), self.pca_components)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'), self.initializer)
+                np.save(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'), self.weights)
 
         if input_rank_ratio and input_rank_ratio <= 1.0:
             full_rank = self.input_weights.shape[-1]
