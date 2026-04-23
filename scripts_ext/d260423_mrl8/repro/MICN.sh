@@ -22,7 +22,8 @@ check_jobs(){
 
 job_number=0
 
-DATA_ROOT=./dataset
+DATA_ROOT=$USRDIR/dataset
+OUT_ROOT=/mnt/tidalfs-bdsz01/dataset/llm_dataset/plc_data/Time-o1
 EXP_NAME=repro
 seed=2023
 des='MICN'
@@ -71,7 +72,7 @@ for pl in ${pl_list[@]}; do
     ax=$(printf "%.${decimal_places}f" $ax)
 
     JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}
-    OUTPUT_DIR="./results/${EXP_NAME}/${JOB_NAME}"
+    OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
     RESULTS=$OUTPUT_DIR/results/
