@@ -7,7 +7,7 @@
 
         {
             "name": "Meta with ML3",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "cwd": "${workspaceRoot}",
             "program": "${workspaceRoot}/run.py",

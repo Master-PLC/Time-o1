@@ -147,6 +147,7 @@ def data_provider(args, flag):
             noise_type=args.noise_type,
             data_percentage=args.data_percentage,
             rank_ratio=args.rank_ratio,
+            input_rank_ratio=args.input_rank_ratio,
             pca_dim=args.pca_dim,
             reinit=args.reinit,
             shift=args.shift,

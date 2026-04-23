@@ -199,3 +199,6 @@ analyze/
 
 pami_scripts/
 # !pami_scripts/meta_tune/
+third_party/
+paper/
+.DS_Store

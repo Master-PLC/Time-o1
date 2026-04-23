@@ -136,10 +136,14 @@ if __name__ == '__main__':
 
     # PCA
     parser.add_argument('--rank_ratio', type=float, default=1.0, help='ratio of low rank for PCA')
+    parser.add_argument('--input_rank_ratio', type=float, default=1.0, help='ratio of low rank for input PCA')
+    parser.add_argument('--input_trans', type=str, default=None, help='input transform, options: [basis, fourier]')
     parser.add_argument('--pca_dim', type=str, default="all", help="dimension for PCA, choices in ['all','T','D']")
     parser.add_argument('--reinit', type=int, default=0, help="whether reinit for PCA")
+    parser.add_argument('--input_reinit', type=int, default=0, help="whether reinit for input PCA")
     parser.add_argument('--dist_scale', type=float, default=0.1, help="scale factor for ot distance matrix")
     parser.add_argument('--use_weights', type=int, default=0, help="use pca weights or not")
+    parser.add_argument('--input_use_weights', type=int, default=0, help="use input pca weights or not")
     parser.add_argument('--load_from_disk', type=str, default="")
 
     # CCA

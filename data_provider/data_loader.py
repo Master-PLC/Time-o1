@@ -198,7 +198,7 @@ class Dataset_ETT_hour_PCA(Dataset_ETT_hour):
         target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
         noise_type='sin', data_percentage=1., trend_k=0.02, rank_ratio=1.0, 
-        pca_dim="all", reinit=0, speedup_sklearn=0, load_from_disk="", **kwargs
+        input_rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=0, load_from_disk="", **kwargs
     ):
         super().__init__(
             root_path, flag, size, features, data_path, target, scale, timeenc, freq, seasonal_patterns, 
@@ -207,30 +207,54 @@ class Dataset_ETT_hour_PCA(Dataset_ETT_hour):
 
         self.speedup_sklearn = speedup_sklearn
         self.load_from_disk = load_from_disk
-        self.pca_fit(rank_ratio, pca_dim, reinit)
+        self.pca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def pca_fit(self, rank_ratio=1.0, pca_dim="all", reinit=0):
+    def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
         if self.set_type != 0:
             self.pca_components = None
+            self.input_components = None
             return
 
         print("Fitting PCA ...")
         if self.load_from_disk and os.path.exists(os.path.join(self.load_from_disk, 'pca_components.npy')):
+            self.input_components = np.load(os.path.join(self.load_from_disk, 'input_components.npy'))
+            self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input_initializer.npy'))
+            self.input_weights = np.load(os.path.join(self.load_from_disk, 'input_weights.npy'))
             self.pca_components = np.load(os.path.join(self.load_from_disk, 'pca_components.npy'))
             self.initializer = np.load(os.path.join(self.load_from_disk, 'initializer.npy'))
             self.weights = np.load(os.path.join(self.load_from_disk, 'weights.npy'))
         else:
-            label_seq = []
+            input_seq, label_seq = [], []
             for i in range(self.__len__()):
-                _, label, _, _ = self.__getitem__(i)
+                inp, label, _, _ = self.__getitem__(i)
                 label = label[-self.pred_len:]
+                input_seq.append(inp)
                 label_seq.append(label)
+            input_seq = np.array(input_seq)  # shape: [N, S, D]
             label_seq = np.array(label_seq)  # shape: [N, P, D]
+            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
+                np.save(os.path.join(self.load_from_disk, 'input_components.npy'), self.input_components)
+                np.save(os.path.join(self.load_from_disk, 'input_initializer.npy'), self.input_initializer)
+                np.save(os.path.join(self.load_from_disk, 'input_weights.npy'), self.input_weights)
                 np.save(os.path.join(self.load_from_disk, 'pca_components.npy'), self.pca_components)
                 np.save(os.path.join(self.load_from_disk, 'initializer.npy'), self.initializer)
                 np.save(os.path.join(self.load_from_disk, 'weights.npy'), self.weights)
+
+        if input_rank_ratio and input_rank_ratio <= 1.0:
+            full_rank = self.input_weights.shape[-1]
+            proj_dim = int(full_rank * input_rank_ratio)
+            self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
+            self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
+        elif input_rank_ratio < 0 or input_rank_ratio > 1:
+            proj_dim = int(abs(input_rank_ratio))
+            proj_dim = min(proj_dim, self.input_weights.shape[-1])
+            self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
+            self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
+
+        print(f"Input PCA components shape: {self.input_components.shape}")
+        print(f"Input PCA weights shape: {self.input_weights.shape}")
 
         if rank_ratio and rank_ratio <= 1.0:
             full_rank = self.weights.shape[-1]
@@ -253,7 +277,7 @@ class Dataset_ETT_hour_CCA(Dataset_ETT_hour):
         target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
         noise_type='sin', data_percentage=1., trend_k=0.02, rank_ratio=1.0, 
-        pca_dim="all", reinit=0, speedup_sklearn=0, align_type=0, **kwargs
+        input_rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=0, align_type=0, **kwargs
     ):
         super().__init__(
             root_path, flag, size, features, data_path, target, scale, timeenc, freq, seasonal_patterns, 
@@ -262,9 +286,9 @@ class Dataset_ETT_hour_CCA(Dataset_ETT_hour):
 
         self.align_type = align_type
         self.speedup_sklearn = speedup_sklearn
-        self.cca_fit(rank_ratio, pca_dim, reinit)
+        self.cca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def cca_fit(self, rank_ratio=1.0, pca_dim="D", reinit=0):
+    def cca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="D", reinit=0):
         if self.set_type != 0:
             self.Wx = None
             self.Wy = None
@@ -414,7 +438,7 @@ class Dataset_ETT_minute_PCA(Dataset_ETT_minute):
         target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
         noise_type='sin', data_percentage=1., trend_k=0.02, rank_ratio=1.0, 
-        pca_dim="all", reinit=0, speedup_sklearn=0, load_from_disk="", **kwargs
+        input_rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=0, load_from_disk="", **kwargs
     ):
         super().__init__(
             root_path, flag, size, features, data_path, target, scale, timeenc, freq, seasonal_patterns, 
@@ -423,30 +447,54 @@ class Dataset_ETT_minute_PCA(Dataset_ETT_minute):
 
         self.speedup_sklearn = speedup_sklearn
         self.load_from_disk = load_from_disk
-        self.pca_fit(rank_ratio, pca_dim, reinit)
+        self.pca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def pca_fit(self, rank_ratio=1.0, pca_dim="all", reinit=0):
+    def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
         if self.set_type != 0:
             self.pca_components = None
+            self.input_components = None
             return
 
         print("Fitting PCA ...")
         if self.load_from_disk and os.path.exists(os.path.join(self.load_from_disk, 'pca_components.npy')):
+            self.input_components = np.load(os.path.join(self.load_from_disk, 'input_components.npy'))
+            self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input_initializer.npy'))
+            self.input_weights = np.load(os.path.join(self.load_from_disk, 'input_weights.npy'))
             self.pca_components = np.load(os.path.join(self.load_from_disk, 'pca_components.npy'))
             self.initializer = np.load(os.path.join(self.load_from_disk, 'initializer.npy'))
             self.weights = np.load(os.path.join(self.load_from_disk, 'weights.npy'))
         else:
-            label_seq = []
+            input_seq, label_seq = [], []
             for i in range(self.__len__()):
-                _, label, _, _ = self.__getitem__(i)
+                inp, label, _, _ = self.__getitem__(i)
                 label = label[-self.pred_len:]
+                input_seq.append(inp)
                 label_seq.append(label)
+            input_seq = np.array(input_seq)  # shape: [N, S, D]
             label_seq = np.array(label_seq)  # shape: [N, P, D]
+            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
+                np.save(os.path.join(self.load_from_disk, 'input_components.npy'), self.input_components)
+                np.save(os.path.join(self.load_from_disk, 'input_initializer.npy'), self.input_initializer)
+                np.save(os.path.join(self.load_from_disk, 'input_weights.npy'), self.input_weights)
                 np.save(os.path.join(self.load_from_disk, 'pca_components.npy'), self.pca_components)
                 np.save(os.path.join(self.load_from_disk, 'initializer.npy'), self.initializer)
                 np.save(os.path.join(self.load_from_disk, 'weights.npy'), self.weights)
+
+        if input_rank_ratio and input_rank_ratio <= 1.0:
+            full_rank = self.input_weights.shape[-1]
+            proj_dim = int(full_rank * input_rank_ratio)
+            self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
+            self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
+        elif input_rank_ratio < 0 or input_rank_ratio > 1:
+            proj_dim = int(abs(input_rank_ratio))
+            proj_dim = min(proj_dim, self.input_weights.shape[-1])
+            self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
+            self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
+
+        print(f"Input PCA components shape: {self.input_components.shape}")
+        print(f"Input PCA weights shape: {self.input_weights.shape}")
 
         if rank_ratio and rank_ratio <= 1.0:
             full_rank = self.weights.shape[-1]
@@ -469,7 +517,7 @@ class Dataset_ETT_minute_CCA(Dataset_ETT_minute):
         target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
         noise_type='sin', data_percentage=1., trend_k=0.02, rank_ratio=1.0, 
-        pca_dim="all", reinit=0, speedup_sklearn=0, align_type=0, **kwargs
+        input_rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=0, align_type=0, **kwargs
     ):
         super().__init__(
             root_path, flag, size, features, data_path, target, scale, timeenc, freq, seasonal_patterns, 
@@ -478,9 +526,9 @@ class Dataset_ETT_minute_CCA(Dataset_ETT_minute):
 
         self.align_type = align_type
         self.speedup_sklearn = speedup_sklearn
-        self.cca_fit(rank_ratio, pca_dim, reinit)
+        self.cca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def cca_fit(self, rank_ratio=1.0, pca_dim="D", reinit=0):
+    def cca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="D", reinit=0):
         if self.set_type != 0:
             self.Wx = None
             self.Wy = None
@@ -673,7 +721,7 @@ class Dataset_Custom_PCA(Dataset_Custom):
         self, root_path, flag='train', size=None, features='S', data_path='electricity.csv',
         target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, pca_dim="all", 
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", 
         reinit=0, speedup_sklearn=0, load_from_disk="", **kwargs
     ):
         super().__init__(
@@ -683,30 +731,54 @@ class Dataset_Custom_PCA(Dataset_Custom):
 
         self.speedup_sklearn = speedup_sklearn
         self.load_from_disk = load_from_disk
-        self.pca_fit(rank_ratio, pca_dim, reinit)
+        self.pca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def pca_fit(self, rank_ratio=1.0, pca_dim="all", reinit=0):
+    def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
         if self.set_type != 0:
             self.pca_components = None
+            self.input_components = None
             return
 
         print("Fitting PCA ...")
         if self.load_from_disk and os.path.exists(os.path.join(self.load_from_disk, 'pca_components.npy')):
+            self.input_components = np.load(os.path.join(self.load_from_disk, 'input_components.npy'))
+            self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input_initializer.npy'))
+            self.input_weights = np.load(os.path.join(self.load_from_disk, 'input_weights.npy'))
             self.pca_components = np.load(os.path.join(self.load_from_disk, 'pca_components.npy'))
             self.initializer = np.load(os.path.join(self.load_from_disk, 'initializer.npy'))
             self.weights = np.load(os.path.join(self.load_from_disk, 'weights.npy'))
         else:
-            label_seq = []
+            input_seq, label_seq = [], []
             for i in range(self.__len__()):
-                _, label, _, _ = self.__getitem__(i)
+                inp, label, _, _ = self.__getitem__(i)
                 label = label[-self.pred_len:]
+                input_seq.append(inp)
                 label_seq.append(label)
+            input_seq = np.array(input_seq)  # shape: [N, S, D]
             label_seq = np.array(label_seq)  # shape: [N, P, D]
+            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
+                np.save(os.path.join(self.load_from_disk, 'input_components.npy'), self.input_components)
+                np.save(os.path.join(self.load_from_disk, 'input_initializer.npy'), self.input_initializer)
+                np.save(os.path.join(self.load_from_disk, 'input_weights.npy'), self.input_weights)
                 np.save(os.path.join(self.load_from_disk, 'pca_components.npy'), self.pca_components)
                 np.save(os.path.join(self.load_from_disk, 'initializer.npy'), self.initializer)
                 np.save(os.path.join(self.load_from_disk, 'weights.npy'), self.weights)
+
+        if input_rank_ratio and input_rank_ratio <= 1.0:
+            full_rank = self.input_weights.shape[-1]
+            proj_dim = int(full_rank * input_rank_ratio)
+            self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
+            self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
+        elif input_rank_ratio < 0 or input_rank_ratio > 1:
+            proj_dim = int(abs(input_rank_ratio))
+            proj_dim = min(proj_dim, self.input_weights.shape[-1])
+            self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
+            self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
+
+        print(f"Input PCA components shape: {self.input_components.shape}")
+        print(f"Input PCA weights shape: {self.input_weights.shape}")
 
         if rank_ratio and rank_ratio <= 1.0:
             full_rank = self.weights.shape[-1]
@@ -728,7 +800,7 @@ class Dataset_Custom_FA(Dataset_Custom):
         self, root_path, flag='train', size=None, features='S', data_path='electricity.csv',
         target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, pca_dim="all", 
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", 
         reinit=0, speedup_sklearn=0, **kwargs
     ):
         super().__init__(
@@ -737,21 +809,27 @@ class Dataset_Custom_FA(Dataset_Custom):
         )
 
         self.speedup_sklearn = speedup_sklearn
-        self.fa_fit(rank_ratio, pca_dim, reinit)
+        self.fa_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def fa_fit(self, rank_ratio=1.0, pca_dim="all", reinit=0):
+    def fa_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
         if self.set_type != 0:
             self.pca_components = None
+            self.input_components = None
             return
 
         print("Fitting FA ...")
-        label_seq = []
+        input_seq, label_seq = [], []
         for i in range(self.__len__()):
-            _, label, _, _ = self.__getitem__(i)
+            inp, label, _, _ = self.__getitem__(i)
             label = label[-self.pred_len:]
+            input_seq.append(inp)
             label_seq.append(label)
+        input_seq = np.array(input_seq)  # shape: [N, S, D]
         label_seq = np.array(label_seq)  # shape: [N, P, D]
+        self.input_components, self.input_initializer, self.input_mean = get_fa_base(input_seq, input_rank_ratio, pca_dim, reinit)
         self.fa_components, self.initializer, self.fa_mean = get_fa_base(label_seq, rank_ratio, pca_dim, reinit)
+        print(f"Input FA components shape: {self.input_components.shape}")
+        print(f"Input FA mean shape: {self.input_mean.shape}")
         print(f"FA components shape: {self.fa_components.shape}")
         print(f"FA mean shape: {self.fa_mean.shape}")
 
@@ -761,7 +839,7 @@ class Dataset_Custom_RobustPCA(Dataset_Custom):
         self, root_path, flag='train', size=None, features='S', data_path='electricity.csv',
         target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, pca_dim="all", 
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", 
         reinit=0, speedup_sklearn=0, **kwargs
     ):
         super().__init__(
@@ -770,21 +848,27 @@ class Dataset_Custom_RobustPCA(Dataset_Custom):
         )
 
         self.speedup_sklearn = speedup_sklearn
-        self.pca_fit(rank_ratio, pca_dim, reinit)
+        self.pca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def pca_fit(self, rank_ratio=1.0, pca_dim="all", reinit=0):
+    def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
         if self.set_type != 0:
             self.pca_components = None
+            self.input_components = None
             return
 
         print("Fitting Robust PCA ...")
-        label_seq = []
+        input_seq, label_seq = [], []
         for i in range(self.__len__()):
-            _, label, _, _ = self.__getitem__(i)
+            inp, label, _, _ = self.__getitem__(i)
             label = label[-self.pred_len:]
+            input_seq.append(inp)
             label_seq.append(label)
+        input_seq = np.array(input_seq)  # shape: [N, S, D]
         label_seq = np.array(label_seq)  # shape: [N, P, D]
+        self.input_components, self.input_initializer, self.input_mean = get_robustpca_base(input_seq, input_rank_ratio, pca_dim, reinit)
         self.pca_components, self.initializer, self.rpca_mean = get_robustpca_base(label_seq, rank_ratio, pca_dim, reinit)
+        print(f"Input PCA components shape: {self.input_components.shape}")
+        print(f"Input PCA mean shape: {self.input_mean.shape}")
         print(f"PCA components shape: {self.pca_components.shape}")
         print(f"PCA mean shape: {self.rpca_mean.shape}")
 
@@ -794,7 +878,7 @@ class Dataset_Custom_SVD(Dataset_Custom):
         self, root_path, flag='train', size=None, features='S', data_path='electricity.csv',
         target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, pca_dim="all", 
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", 
         reinit=0, speedup_sklearn=0, **kwargs
     ):
         super().__init__(
@@ -803,21 +887,26 @@ class Dataset_Custom_SVD(Dataset_Custom):
         )
 
         self.speedup_sklearn = speedup_sklearn
-        self.pca_fit(rank_ratio, pca_dim, reinit)
+        self.pca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def pca_fit(self, rank_ratio=1.0, pca_dim="all", reinit=0):
+    def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
         if self.set_type != 0:
             self.svd_components = None
+            self.input_components = None
             return
 
         print("Fitting SVD ...")
-        label_seq = []
+        input_seq, label_seq = [], []
         for i in range(self.__len__()):
-            _, label, _, _ = self.__getitem__(i)
+            inp, label, _, _ = self.__getitem__(i)
             label = label[-self.pred_len:]
+            input_seq.append(inp)
             label_seq.append(label)
+        input_seq = np.array(input_seq)  # shape: [N, S, D]
         label_seq = np.array(label_seq)  # shape: [N, P, D]
+        self.input_components, self.input_initializer = get_svd_base(input_seq, input_rank_ratio, pca_dim, reinit)
         self.svd_components, self.initializer = get_svd_base(label_seq, rank_ratio, pca_dim, reinit)
+        print(f"Input SVD components shape: {self.input_components.shape}")
         print(f"SVD components shape: {self.svd_components.shape}")
 
 
@@ -826,7 +915,7 @@ class Dataset_Custom_ICA(Dataset_Custom):
         self, root_path, flag='train', size=None, features='S', data_path='electricity.csv',
         target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, pca_dim="all", 
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", 
         reinit=0, speedup_sklearn=0, **kwargs
     ):
         super().__init__(
@@ -835,21 +924,28 @@ class Dataset_Custom_ICA(Dataset_Custom):
         )
 
         self.speedup_sklearn = speedup_sklearn
-        self.ica_fit(rank_ratio, pca_dim, reinit)
+        self.ica_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def ica_fit(self, rank_ratio=1.0, pca_dim="all", reinit=0):
+    def ica_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
         if self.set_type != 0:
             self.ica_components = None
+            self.input_components = None
             return
 
         print("Fitting ICA ...")
-        label_seq = []
+        input_seq, label_seq = [], []
         for i in range(self.__len__()):
-            _, label, _, _ = self.__getitem__(i)
+            inp, label, _, _ = self.__getitem__(i)
             label = label[-self.pred_len:]
+            input_seq.append(inp)
             label_seq.append(label)
+        input_seq = np.array(input_seq)  # shape: [N, S, D]
         label_seq = np.array(label_seq)  # shape: [N, P, D]
+        self.input_components, self.input_initializer, self.input_mean, self.input_whitening = get_ica_base(input_seq, input_rank_ratio, pca_dim, reinit)
         self.ica_components, self.initializer, self.ica_mean, self.whitening = get_ica_base(label_seq, rank_ratio, pca_dim, reinit)
+        print(f"Input ICA components shape: {self.input_components.shape}")
+        print(f"Input ICA mean shape: {self.input_mean.shape}")
+        print(f"Input ICA whitening shape: {self.input_whitening.shape}")
         print(f"ICA components shape: {self.ica_components.shape}")
         print(f"ICA mean shape: {self.ica_mean.shape}")
         print(f"ICA whitening shape: {self.whitening.shape}")
@@ -860,7 +956,7 @@ class Dataset_Custom_RobustICA(Dataset_Custom):
         self, root_path, flag='train', size=None, features='S', data_path='electricity.csv',
         target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, pca_dim="all", 
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", 
         reinit=0, speedup_sklearn=0, **kwargs
     ):
         super().__init__(
@@ -869,21 +965,26 @@ class Dataset_Custom_RobustICA(Dataset_Custom):
         )
 
         self.speedup_sklearn = speedup_sklearn
-        self.ica_fit(rank_ratio, pca_dim, reinit)
+        self.ica_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def ica_fit(self, rank_ratio=1.0, pca_dim="all", reinit=0):
+    def ica_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
         if self.set_type != 0:
             self.ica_components = None
+            self.input_components = None
             return
 
         print("Fitting Robust ICA ...")
-        label_seq = []
+        input_seq, label_seq = [], []
         for i in range(self.__len__()):
-            _, label, _, _ = self.__getitem__(i)
+            inp, label, _, _ = self.__getitem__(i)
             label = label[-self.pred_len:]
+            input_seq.append(inp)
             label_seq.append(label)
+        input_seq = np.array(input_seq)  # shape: [N, S, D]
         label_seq = np.array(label_seq)  # shape: [N, P, D]
+        self.input_components, self.input_initializer = get_robustica_base(input_seq, input_rank_ratio, pca_dim, reinit)
         self.ica_components, self.initializer = get_robustica_base(label_seq, rank_ratio, pca_dim, reinit)
+        print(f"Input Robust ICA components shape: {self.input_components.shape}")
         print(f"Robust ICA components shape: {self.ica_components.shape}")
 
 
@@ -892,7 +993,7 @@ class Dataset_Custom_CCA(Dataset_Custom):
         self, root_path, flag='train', size=None, features='S', data_path='electricity.csv',
         target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, pca_dim="all", 
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", 
         reinit=0, speedup_sklearn=0, align_type=0,  **kwargs
     ):
         super().__init__(
@@ -902,9 +1003,9 @@ class Dataset_Custom_CCA(Dataset_Custom):
 
         self.align_type = align_type
         self.speedup_sklearn = speedup_sklearn
-        self.cca_fit(rank_ratio, pca_dim, reinit)
+        self.cca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def cca_fit(self, rank_ratio=1.0, pca_dim="D", reinit=0):
+    def cca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="D", reinit=0):
         if self.set_type != 0:
             self.Wx = None
             self.Wy = None
@@ -1083,7 +1184,7 @@ class Dataset_PEMS_PCA(Dataset_PEMS):
         self, root_path, flag='train', size=None, features='S', data_path='ETTh1.csv',
         target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, pca_dim="all", 
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", 
         reinit=0, speedup_sklearn=0, load_from_disk="", **kwargs
     ):
         super().__init__(
@@ -1092,30 +1193,54 @@ class Dataset_PEMS_PCA(Dataset_PEMS):
 
         self.speedup_sklearn = speedup_sklearn
         self.load_from_disk = load_from_disk
-        self.pca_fit(rank_ratio, pca_dim, reinit)
+        self.pca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def pca_fit(self, rank_ratio=1.0, pca_dim="all", reinit=0):
+    def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
         if self.set_type != 0:
             self.pca_components = None
+            self.input_components = None
             return
 
         print("Fitting PCA ...")
         if self.load_from_disk and os.path.exists(os.path.join(self.load_from_disk, 'pca_components.npy')):
+            self.input_components = np.load(os.path.join(self.load_from_disk, 'input_components.npy'))
+            self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input_initializer.npy'))
+            self.input_weights = np.load(os.path.join(self.load_from_disk, 'input_weights.npy'))
             self.pca_components = np.load(os.path.join(self.load_from_disk, 'pca_components.npy'))
             self.initializer = np.load(os.path.join(self.load_from_disk, 'initializer.npy'))
             self.weights = np.load(os.path.join(self.load_from_disk, 'weights.npy'))
         else:
-            label_seq = []
+            input_seq, label_seq = [], []
             for i in range(self.__len__()):
-                _, label, _, _ = self.__getitem__(i)
+                inp, label, _, _ = self.__getitem__(i)
                 label = label[-self.pred_len:]
+                input_seq.append(inp)
                 label_seq.append(label)
+            input_seq = np.array(input_seq)  # shape: [N, S, D]
             label_seq = np.array(label_seq)  # shape: [N, P, D]
+            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, input_rank_ratio, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
+                np.save(os.path.join(self.load_from_disk, 'input_components.npy'), self.input_components)
+                np.save(os.path.join(self.load_from_disk, 'input_initializer.npy'), self.input_initializer)
+                np.save(os.path.join(self.load_from_disk, 'input_weights.npy'), self.input_weights)
                 np.save(os.path.join(self.load_from_disk, 'pca_components.npy'), self.pca_components)
                 np.save(os.path.join(self.load_from_disk, 'initializer.npy'), self.initializer)
                 np.save(os.path.join(self.load_from_disk, 'weights.npy'), self.weights)
+
+        if input_rank_ratio and input_rank_ratio <= 1.0:
+            full_rank = self.input_weights.shape[-1]
+            proj_dim = int(full_rank * input_rank_ratio)
+            self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
+            self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
+        elif input_rank_ratio < 0 or input_rank_ratio > 1:
+            proj_dim = int(abs(input_rank_ratio))
+            proj_dim = min(proj_dim, self.input_weights.shape[-1])
+            self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
+            self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
+
+        print(f"Input PCA components shape: {self.input_components.shape}")
+        print(f"Input PCA weights shape: {self.input_weights.shape}")
 
         if rank_ratio and rank_ratio <= 1.0:
             full_rank = self.weights.shape[-1]
@@ -1137,7 +1262,7 @@ class Dataset_PEMS_CCA(Dataset_PEMS):
         self, root_path, flag='train', size=None, features='S', data_path='ETTh1.csv',
         target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, pca_dim="all", 
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", 
         reinit=0, speedup_sklearn=0, align_type=0, **kwargs
     ):
         super().__init__(
@@ -1146,9 +1271,9 @@ class Dataset_PEMS_CCA(Dataset_PEMS):
 
         self.align_type = align_type
         self.speedup_sklearn = speedup_sklearn
-        self.cca_fit(rank_ratio, pca_dim, reinit)
+        self.cca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def cca_fit(self, rank_ratio=1.0, pca_dim="D", reinit=0):
+    def cca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="D", reinit=0):
         if self.set_type != 0:
             self.Wx = None
             self.Wy = None
@@ -1340,7 +1465,7 @@ class Dataset_M4_PCA(Dataset_M4):
         self, root_path, flag='pred', size=None, features='S', data_path='ETTh1.csv',
         target='OT', scale=True, inverse=False, timeenc=0, freq='15min', seasonal_patterns='Yearly', 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, pca_dim="all", 
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", 
         reinit=0, speedup_sklearn=0, load_from_disk="", **kwargs
     ):
         super().__init__(
@@ -1352,30 +1477,54 @@ class Dataset_M4_PCA(Dataset_M4):
 
         self.speedup_sklearn = speedup_sklearn
         self.load_from_disk = load_from_disk
-        self.pca_fit(rank_ratio, pca_dim, reinit)
+        self.pca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def pca_fit(self, rank_ratio=1.0, pca_dim="all", reinit=0):
+    def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
         if self.flag != 'train':
             self.pca_components = None
+            self.input_components = None
             return
 
         print("Fitting PCA ...")
         if self.load_from_disk and os.path.exists(os.path.join(self.load_from_disk, 'pca_components.npy')):
+            self.input_components = np.load(os.path.join(self.load_from_disk, 'input_components.npy'))
+            self.input_initializer = np.load(os.path.join(self.load_from_disk, 'input_initializer.npy'))
+            self.input_weights = np.load(os.path.join(self.load_from_disk, 'input_weights.npy'))
             self.pca_components = np.load(os.path.join(self.load_from_disk, 'pca_components.npy'))
             self.initializer = np.load(os.path.join(self.load_from_disk, 'initializer.npy'))
             self.weights = np.load(os.path.join(self.load_from_disk, 'weights.npy'))
         else:
-            label_seq = []
+            input_seq, label_seq = [], []
             for i in range(self.__len__()):
-                _, label, _, _ = self.__getitem__(i)
+                inp, label, _, _ = self.__getitem__(i)
                 label = label[-self.pred_len:]
+                input_seq.append(inp)
                 label_seq.append(label)
+            input_seq = np.array(input_seq)  # shape: [N, S, D]
             label_seq = np.array(label_seq)  # shape: [N, P, D]
+            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, input_rank_ratio, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
+                np.save(os.path.join(self.load_from_disk, 'input_components.npy'), self.input_components)
+                np.save(os.path.join(self.load_from_disk, 'input_initializer.npy'), self.input_initializer)
+                np.save(os.path.join(self.load_from_disk, 'input_weights.npy'), self.input_weights)
                 np.save(os.path.join(self.load_from_disk, 'pca_components.npy'), self.pca_components)
                 np.save(os.path.join(self.load_from_disk, 'initializer.npy'), self.initializer)
                 np.save(os.path.join(self.load_from_disk, 'weights.npy'), self.weights)
+
+        if input_rank_ratio and input_rank_ratio <= 1.0:
+            full_rank = self.input_weights.shape[-1]
+            proj_dim = int(full_rank * input_rank_ratio)
+            self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
+            self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
+        elif input_rank_ratio < 0 or input_rank_ratio > 1:
+            proj_dim = int(abs(input_rank_ratio))
+            proj_dim = min(proj_dim, self.input_weights.shape[-1])
+            self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
+            self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
+
+        print(f"Input PCA components shape: {self.input_components.shape}")
+        print(f"Input PCA weights shape: {self.input_weights.shape}")
 
         if rank_ratio and rank_ratio <= 1.0:
             full_rank = self.weights.shape[-1]
@@ -1397,7 +1546,7 @@ class Dataset_M4_CCA(Dataset_M4):
         self, root_path, flag='pred', size=None, features='S', data_path='ETTh1.csv',
         target='OT', scale=True, inverse=False, timeenc=0, freq='15min', seasonal_patterns='Yearly', 
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, pca_dim="all", 
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", 
         reinit=0, speedup_sklearn=0, align_type=0, **kwargs
     ):
         super().__init__(
@@ -1409,9 +1558,9 @@ class Dataset_M4_CCA(Dataset_M4):
 
         self.align_type = align_type
         self.speedup_sklearn = speedup_sklearn
-        self.cca_fit(rank_ratio, pca_dim, reinit)
+        self.cca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
-    def cca_fit(self, rank_ratio=1.0, pca_dim="D", reinit=0):
+    def cca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="D", reinit=0):
         if self.set_type != 0:
             self.Wx = None
             self.Wy = None
