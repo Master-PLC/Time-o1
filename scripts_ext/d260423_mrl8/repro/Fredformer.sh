@@ -41,11 +41,11 @@ test_batch_size=1
 rerun=1
 
 # datasets to run
-datasets=(ETTh1_PCA ETTh2_PCA ETTm1_PCA ETTm2_PCA)
+datasets=(ETTh1 ETTh2 ETTm1 ETTm2)
 
 
 # hyper-parameters
-dst=ETTh1_PCA
+dst=ETTh1
 pl_list=(96 192 336 720)
 
 lradj=type3
@@ -80,6 +80,8 @@ for pl in ${pl_list[@]}; do
 
     JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
+    PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
+    mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
     RESULTS=$OUTPUT_DIR/results/
@@ -159,6 +161,7 @@ for pl in ${pl_list[@]}; do
             --test_results $TEST_RESULTS \
             --log_path $LOG_PATH \
             --rerun $rerun \
+            --load_from_disk ${PROJ_DIR} \
             --speedup_sklearn 2
 
         sleep 5
@@ -171,7 +174,7 @@ done
 
 
 # hyper-parameters
-dst=ETTh2_PCA
+dst=ETTh2
 pl_list=(96 192 336 720)
 
 lradj=type3
@@ -205,6 +208,8 @@ for pl in ${pl_list[@]}; do
 
     JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
+    PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
+    mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
     RESULTS=$OUTPUT_DIR/results/
@@ -287,6 +292,7 @@ for pl in ${pl_list[@]}; do
             --test_results $TEST_RESULTS \
             --log_path $LOG_PATH \
             --rerun $rerun \
+            --load_from_disk ${PROJ_DIR} \
             --speedup_sklearn 2
 
         sleep 5
@@ -299,7 +305,7 @@ done
 
 
 # hyper-parameters
-dst=ETTm1_PCA
+dst=ETTm1
 pl_list=(96 192 336 720)
 
 lradj=TST
@@ -334,6 +340,8 @@ for pl in ${pl_list[@]}; do
 
     JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
+    PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
+    mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
     RESULTS=$OUTPUT_DIR/results/
@@ -418,6 +426,7 @@ for pl in ${pl_list[@]}; do
             --test_results $TEST_RESULTS \
             --log_path $LOG_PATH \
             --rerun $rerun \
+            --load_from_disk ${PROJ_DIR} \
             --speedup_sklearn 2
 
         sleep 5
@@ -428,7 +437,7 @@ done
 
 
 # hyper-parameters
-dst=ETTm2_PCA
+dst=ETTm2
 pl_list=(96 192 336 720)
 
 lradj=TST
@@ -463,6 +472,8 @@ for pl in ${pl_list[@]}; do
 
     JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
+    PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
+    mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
     RESULTS=$OUTPUT_DIR/results/
@@ -547,6 +558,7 @@ for pl in ${pl_list[@]}; do
             --test_results $TEST_RESULTS \
             --log_path $LOG_PATH \
             --rerun $rerun \
+            --load_from_disk ${PROJ_DIR} \
             --speedup_sklearn 2
 
         sleep 5
