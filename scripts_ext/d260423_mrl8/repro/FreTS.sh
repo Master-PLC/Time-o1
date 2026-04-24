@@ -1,5 +1,5 @@
 #!/bin/bash
-MAX_JOBS=8
+MAX_JOBS=24
 GPUS=(0 1 2 3 4 5 6 7)
 TOTAL_GPUS=${#GPUS[@]}
 
@@ -23,7 +23,7 @@ check_jobs(){
 job_number=0
 
 DATA_ROOT=$USRDIR/dataset
-OUT_ROOT=/mnt/tidalfs-bdsz01/dataset/llm_dataset/plc_data/Time-o1
+OUT_ROOT=/mnt/tidalfs-bdsz01/dataset/llm_ckpt/plc_data/Time-o1
 EXP_NAME=repro
 seed=2023
 des='FreTS'
@@ -149,7 +149,8 @@ for pl in ${pl_list[@]}; do
             --speedup_sklearn 2
 
         sleep 5
-    } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
+    # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
+    } &
 done
 
 
