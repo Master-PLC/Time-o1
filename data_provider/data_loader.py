@@ -215,9 +215,10 @@ class Dataset_ETT_hour_PCA(Dataset_ETT_hour):
         self.pca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
     def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
+        self.pca_components = None
+        self.input_components = None
+
         if self.set_type != 0:
-            self.pca_components = None
-            self.input_components = None
             return
 
         print("Fitting PCA ...")
@@ -230,7 +231,8 @@ class Dataset_ETT_hour_PCA(Dataset_ETT_hour):
                 self.pca_components = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'))
                 self.initializer = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'))
                 self.weights = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'))
-        else:
+
+        if self.pca_components is None and self.input_components is None:
             input_seq, label_seq = [], []
             for i in range(self.__len__()):
                 inp, label, _, _ = self.__getitem__(i)
@@ -459,9 +461,10 @@ class Dataset_ETT_minute_PCA(Dataset_ETT_minute):
         self.pca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
     def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
+        self.pca_components = None
+        self.input_components = None
+
         if self.set_type != 0:
-            self.pca_components = None
-            self.input_components = None
             return
 
         print("Fitting PCA ...")
@@ -474,7 +477,8 @@ class Dataset_ETT_minute_PCA(Dataset_ETT_minute):
                 self.pca_components = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'))
                 self.initializer = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'))
                 self.weights = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'))
-        else:
+
+        if self.pca_components is None and self.input_components is None:
             input_seq, label_seq = [], []
             for i in range(self.__len__()):
                 inp, label, _, _ = self.__getitem__(i)
@@ -747,9 +751,10 @@ class Dataset_Custom_PCA(Dataset_Custom):
         self.pca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
     def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
+        self.pca_components = None
+        self.input_components = None
+
         if self.set_type != 0:
-            self.pca_components = None
-            self.input_components = None
             return
 
         print("Fitting PCA ...")
@@ -762,7 +767,8 @@ class Dataset_Custom_PCA(Dataset_Custom):
                 self.pca_components = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'))
                 self.initializer = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'))
                 self.weights = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'))
-        else:
+
+        if self.pca_components is None and self.input_components is None:
             input_seq, label_seq = [], []
             for i in range(self.__len__()):
                 inp, label, _, _ = self.__getitem__(i)
@@ -1213,9 +1219,10 @@ class Dataset_PEMS_PCA(Dataset_PEMS):
         self.pca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
     def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
+        self.pca_components = None
+        self.input_components = None
+
         if self.set_type != 0:
-            self.pca_components = None
-            self.input_components = None
             return
 
         print("Fitting PCA ...")
@@ -1228,7 +1235,8 @@ class Dataset_PEMS_PCA(Dataset_PEMS):
                 self.pca_components = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'))
                 self.initializer = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'))
                 self.weights = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'))
-        else:
+
+        if self.pca_components is None and self.input_components is None:
             input_seq, label_seq = [], []
             for i in range(self.__len__()):
                 inp, label, _, _ = self.__getitem__(i)
@@ -1501,9 +1509,10 @@ class Dataset_M4_PCA(Dataset_M4):
         self.pca_fit(rank_ratio, input_rank_ratio, pca_dim, reinit)
 
     def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
+        self.pca_components = None
+        self.input_components = None
+
         if self.flag != 'train':
-            self.pca_components = None
-            self.input_components = None
             return
 
         print("Fitting PCA ...")
@@ -1516,7 +1525,8 @@ class Dataset_M4_PCA(Dataset_M4):
                 self.pca_components = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'pca_components.npy'))
                 self.initializer = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'initializer.npy'))
                 self.weights = np.load(os.path.join(self.load_from_disk, 'output', f"{self.pred_len}", 'weights.npy'))
-        else:
+
+        if self.pca_components is None and self.input_components is None:
             input_seq, label_seq = [], []
             for i in range(self.__len__()):
                 inp, label, _, _ = self.__getitem__(i)
