@@ -242,6 +242,7 @@ if __name__ == '__main__':
     parser.add_argument('--hyper_dim', type=int, default=2048, help='dimension of hypernet')
     parser.add_argument('--sample_attn', type=int, default=0, help='sample attention; True 1 False 0')
 
+    parser.add_argument('--extra_metrics', action=EvalAction, default=[], help='extra_metrics')
     parser.add_argument('--max_iter', type=int, default=10)
     parser.add_argument('--warping_length', type=int, default=96, help='warping_length')
     parser.add_argument('--bandwidth', type=float, default=0.)
