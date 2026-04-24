@@ -1,17 +1,20 @@
+import sys
+
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent))
+
 import argparse
 import os
 import random
-import sys
+import torch
 
 import cupy as cp
 import numpy as np
-import setproctitle
-import torch
-import torch.profiler as profiler
 
 from exp import EXP_DICT
 from utils.print_args import print_args
 from utils.tools import EvalAction
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='TimesNet')
@@ -36,6 +39,8 @@ if __name__ == '__main__':
     parser.add_argument('--log_step', type=int, default=10, help='log step')
     parser.add_argument('--output_pred', action='store_true', help='output true and pred', default=False)
     parser.add_argument('--output_vis', action='store_true', help='output visual figures', default=False)
+    parser.add_argument('--output_log', action='store_true', help='output log', default=False)
+    parser.add_argument('--report_to', type=str, default='local', help='report to tensorboard or None')
 
     # data loader
     parser.add_argument('--data_id', type=str, default='ETTm1', help='dataset name')
@@ -132,6 +137,7 @@ if __name__ == '__main__':
     parser.add_argument('--module_first', type=int, default=1, help='calculate module first then mean ')
     parser.add_argument('--leg_degree', type=int, default=2, help='degree of legendre polynomial')
     parser.add_argument('--alpha', type=float, default=0.5, help="weight for dilate loss")
+    parser.add_argument('--dilate_alpha', type=float, default=0.5, help="weight for dilate loss")
     parser.add_argument('--gamma', type=float, default=0.01, help="coef for dilate loss")
 
     # PCA
@@ -235,6 +241,10 @@ if __name__ == '__main__':
     parser.add_argument('--weighting_type', type=str, default='softmax', help='type of weighting for auxi loss, options: [softmax, minmax]')
     parser.add_argument('--hyper_dim', type=int, default=2048, help='dimension of hypernet')
     parser.add_argument('--sample_attn', type=int, default=0, help='sample attention; True 1 False 0')
+
+    parser.add_argument('--max_iter', type=int, default=10)
+    parser.add_argument('--warping_length', type=int, default=96, help='warping_length')
+    parser.add_argument('--bandwidth', type=float, default=0.)
 
     args = parser.parse_args()
 

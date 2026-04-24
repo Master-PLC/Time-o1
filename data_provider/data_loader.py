@@ -1,17 +1,22 @@
+import sys
+
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
 import glob
 import os
 import re
+import torch
 import warnings
 
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-
-import torch
-from data_provider.m4 import M4Dataset, M4Meta
-from data_provider.uea import Normalizer, interpolate_missing, subsample
 from sktime.datasets import load_from_tsfile_to_dataframe
 from torch.utils.data import Dataset
+
+from data_provider.m4 import M4Dataset, M4Meta
+from data_provider.uea import Normalizer, interpolate_missing, subsample
 from utils.fourier_koopman import fourier
 from utils.polynomial import get_pca_base, get_cca_projection, get_ica_base, get_robustica_base, get_robustpca_base, get_svd_base, get_fa_base
 from utils.timefeatures import time_features

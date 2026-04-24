@@ -15,9 +15,14 @@
 """
 M4 Summary
 """
-import os
-from collections import OrderedDict
+import sys
 
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+import os
+
+from collections import OrderedDict
 import numpy as np
 import pandas as pd
 

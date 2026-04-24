@@ -1,7 +1,7 @@
-import numpy as np
-from numba import jit
-
 import torch
+
+from numba import jit
+import numpy as np
 
 
 @jit(nopython=True)

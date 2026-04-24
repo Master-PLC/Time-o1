@@ -1,18 +1,21 @@
-import math
+import sys
 
-import matplotlib.pyplot as plt
+from pathlib import Path
+sys.path.append(str(Path(__file__).parents[1]))
+
+import torch
+
 import numpy as np
 from numpy.polynomial import Chebyshev as C
 from numpy.polynomial import Hermite as H
-from numpy.polynomial import Laguerre as La
 from numpy.polynomial import Legendre as L
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import FastICA, FactorAnalysis, TruncatedSVD
+from numpy.polynomial import Laguerre as La
 from robustica import RobustICA
 from scipy import linalg
-from utils.rpca import RobustPCA
+from sklearn.decomposition import FastICA, FactorAnalysis, TruncatedSVD
+from sklearn.preprocessing import StandardScaler
 
-import torch
+from utils.rpca import RobustPCA
 
 
 def standard_laguerre(data, degree):
@@ -199,9 +202,19 @@ def chebyshev_torch(data, degree, rtn_data=False, device='cpu'):
         return coeffs
 
 
-def get_cca_projection(X, Y, rank_ratio=1.0, pca_dim="D", speedup_sklearn=0, align_type=0):
+def ensure_array(data):
+    if isinstance(data, torch.Tensor):
+        return data.cpu().numpy()
+    elif isinstance(data, np.ndarray):
+        return data
+
+
+def get_cca_projection(X, Y, rank_ratio=1.0, pca_dim="D", speedup_sklearn=0, align_type=0, add_noise=False):
     if speedup_sklearn in [0, 1]:
         from sklearn.cross_decomposition import CCA
+    elif speedup_sklearn == 2:
+        from utils.cca import CCA
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # N, T, D = Y.shape
     D = Y.shape[-1]
@@ -233,13 +246,17 @@ def get_cca_projection(X, Y, rank_ratio=1.0, pca_dim="D", speedup_sklearn=0, ali
             X = X[np.arange(X.shape[0]), np.random.randint(X.shape[1], size=X.shape[0])]  # shape: [N, D]
             Y = Y[np.arange(Y.shape[0]), np.random.randint(Y.shape[1], size=Y.shape[0])]  # shape: [N, D]
 
-        cca = CCA(n_components=n_components)
+        if add_noise:
+            X += np.random.normal(0, 0.005, X.shape)
+            Y += np.random.normal(0, 0.005, Y.shape)
+
+        cca = CCA(n_components=n_components) if speedup_sklearn in [0, 1] else CCA(n_components=n_components, device=device)
         cca.fit(X, Y)
         
-        Wx = cca.x_rotations_  # shape: [D, rank]
-        Wy = cca.y_loadings_  # shape: [D, rank]
-        means = [cca._x_mean, cca._y_mean]
-        stds = [cca._x_std, cca._y_std]
+        Wx = ensure_array(cca.x_rotations_)  # shape: [D, rank]
+        Wy = ensure_array(cca.y_loadings_)  # shape: [D, rank]
+        means = [ensure_array(cca._x_mean), ensure_array(cca._y_mean)]
+        stds = [ensure_array(cca._x_std), ensure_array(cca._y_std)]
 
     else:
         raise NotImplementedError
@@ -731,6 +748,32 @@ class Random_Cache:
             self.components = torch.randn(pred_len, rank, enc_in, device=device)
 
 
+def random_torch_inverse(low_rank_data, pca_dim, random_cache, pred_len, device='cpu'):
+    B = low_rank_data.shape[0]
+
+    pca_components = random_cache.components
+    if pca_dim == "all":
+        # components: [rank, T*D]
+        # low_rank_data: [B, rank]
+        rule_inv = 'br,rt->bt'
+        data = torch.einsum(rule_inv, low_rank_data, pca_components)
+        data = data.reshape(B, pred_len, -1)
+
+    elif pca_dim == "T":
+        # components: [D, rank, T]
+        # low_rank_data: [B, rank, D]
+        rule_inv = 'brd,drt->btd'
+        data = torch.einsum(rule_inv, low_rank_data, pca_components)
+
+    elif pca_dim == "D":
+        # components: [T, rank, D]
+        # low_rank_data: [B, T, rank]
+        rule_inv = 'btr,trd->btd'
+        data = torch.einsum(rule_inv, low_rank_data, pca_components)
+
+    return data
+
+
 def random_torch(data, pca_dim, random_cache, device='cpu'):
     B, T, D = data.shape
 
@@ -752,6 +795,58 @@ def random_torch(data, pca_dim, random_cache, device='cpu'):
     return low_rank_data
 
 
+def pca_torch_inverse(low_rank_data, pca_dim, pca_cache, use_weights=0, reinit=True, pred_len=None, device='cpu'):
+    B = low_rank_data.shape[0]
+
+    pca_components = pca_cache.components
+    if pca_dim == "all":
+        # components: [rank, T*D]
+        # low_rank_data: [B, rank],  weights shape: [rank]
+        if use_weights:
+            weights = pca_cache.weights
+            if use_weights == 2:
+                weights = torch.sqrt(weights)
+            elif use_weights == 3:
+                weights = torch.pow(weights, 2)
+            # forward: 'br,r->br'  =>  inverse: element-wise divide along rank dim
+            low_rank_data = low_rank_data / weights  # [B, rank] / [rank]
+        rule_inv = 'br,rt->bt'
+        data = torch.einsum(rule_inv, low_rank_data, pca_components)
+        data = data.reshape(B, pred_len, -1)
+    elif pca_dim == "T":
+        # components: [D, rank, T]
+        # low_rank_data: [B, rank, D],  weights shape: [D, rank]
+        if use_weights:
+            weights = pca_cache.weights
+            if use_weights == 2:
+                weights = torch.sqrt(weights)
+            elif use_weights == 3:
+                weights = torch.pow(weights, 2)
+            # forward: 'brd,dr->brd'  =>  inverse: divide by weights transposed to [rank, D] = weights.T
+            low_rank_data = low_rank_data / weights.T  # [B, rank, D] / [rank, D]
+        rule_inv = 'brd,drt->btd'
+        data = torch.einsum(rule_inv, low_rank_data, pca_components)
+    elif pca_dim == "D":
+        # components: [T, rank, D]
+        # low_rank_data: [B, T, rank],  weights shape: [T, rank]
+        if use_weights:
+            weights = pca_cache.weights
+            if use_weights == 2:
+                weights = torch.sqrt(weights)
+            elif use_weights == 3:
+                weights = torch.pow(weights, 2)
+            # forward: 'btr,tr->btr'  =>  inverse: divide by weights [T, rank]
+            low_rank_data = low_rank_data / weights  # [B, T, rank] / [T, rank]
+        rule_inv = 'btr,trd->btd'
+        data = torch.einsum(rule_inv, low_rank_data, pca_components)
+
+    if reinit:
+        mean, std = pca_cache.initializer
+        data = data * std + mean
+
+    return data
+
+
 def pca_torch(data, pca_dim, pca_cache, use_weights=0, reinit=True, device='cpu'):
     B, T, D = data.shape
 
@@ -760,11 +855,9 @@ def pca_torch(data, pca_dim, pca_cache, use_weights=0, reinit=True, device='cpu'
 
     if reinit:
         mean, std = pca_cache.initializer  # shape: [T * D]
-        mean = mean.to(data.device); std = std.to(data.device)
         data = (data - mean) / std
 
     pca_components = pca_cache.components
-    pca_components = pca_components.to(data.device)
     if pca_dim == "all":
         # pca_components shape: [rank, T*D]
         rule_trans = 'bt,rt->br'
@@ -781,7 +874,6 @@ def pca_torch(data, pca_dim, pca_cache, use_weights=0, reinit=True, device='cpu'
     low_rank_data = torch.einsum(rule_trans, data, pca_components)
     if use_weights:
         weights = pca_cache.weights
-        weights = weights.to(data.device)
         if use_weights == 2:
             weights = torch.sqrt(weights)
         elif use_weights == 3:
@@ -789,6 +881,37 @@ def pca_torch(data, pca_dim, pca_cache, use_weights=0, reinit=True, device='cpu'
         low_rank_data = torch.einsum(rule_weight, low_rank_data, weights)
 
     return low_rank_data
+
+
+def fa_torch_inverse(low_rank_data, pca_dim, fa_cache, reinit=True, pred_len=None, device='cpu'):
+    B = low_rank_data.shape[0]
+
+    pca_components = fa_cache.components
+    if pca_dim == "all":
+        # components: [rank, T*D]
+        # low_rank_data: [B, rank]
+        rule_inv = 'br,rt->bt'
+        data = torch.einsum(rule_inv, low_rank_data, pca_components)
+        data = data + fa_cache.mean
+        data = data.reshape(B, pred_len, -1)
+    elif pca_dim == "T":
+        # components: [D, rank, T]
+        # low_rank_data: [B, rank, D]
+        rule_inv = 'brd,drt->btd'
+        data = torch.einsum(rule_inv, low_rank_data, pca_components)
+        data = data + fa_cache.mean
+    elif pca_dim == "D":
+        # components: [T, rank, D]
+        # low_rank_data: [B, T, rank]
+        rule_inv = 'btr,trd->btd'
+        data = torch.einsum(rule_inv, low_rank_data, pca_components)
+        data = data + fa_cache.mean
+
+    if reinit:
+        mean, std = fa_cache.initializer
+        data = data * std + mean
+
+    return data
 
 
 def fa_torch(data, pca_dim, fa_cache, reinit=True, device='cpu'):
@@ -818,6 +941,37 @@ def fa_torch(data, pca_dim, fa_cache, reinit=True, device='cpu'):
     return low_rank_data
 
 
+def robust_pca_torch_inverse(low_rank_data, pca_dim, pca_cache, reinit=True, pred_len=None, device='cpu'):
+    B = low_rank_data.shape[0]
+
+    pca_components = pca_cache.components
+    if pca_dim == "all":
+        # components: [rank, T*D]
+        # low_rank_data: [B, rank]
+        rule_inv = 'br,rt->bt'
+        data = torch.einsum(rule_inv, low_rank_data, pca_components)
+        data = data + pca_cache.mean
+        data = data.reshape(B, pred_len, -1)
+    elif pca_dim == "T":
+        # components: [D, rank, T]
+        # low_rank_data: [B, rank, D]
+        rule_inv = 'brd,drt->btd'
+        data = torch.einsum(rule_inv, low_rank_data, pca_components)
+        data = data + pca_cache.mean
+    elif pca_dim == "D":
+        # components: [T, rank, D]
+        # low_rank_data: [B, T, rank]
+        rule_inv = 'btr,trd->btd'
+        data = torch.einsum(rule_inv, low_rank_data, pca_components)
+        data = data + pca_cache.mean
+
+    if reinit:
+        mean, std = pca_cache.initializer
+        data = data * std + mean
+
+    return data
+
+
 def robust_pca_torch(data, pca_dim, pca_cache, reinit=True, device='cpu'):
     B, T, D = data.shape
 
@@ -843,6 +997,34 @@ def robust_pca_torch(data, pca_dim, pca_cache, reinit=True, device='cpu'):
     low_rank_data = torch.einsum(rule_trans, data, pca_components)
 
     return low_rank_data
+
+
+def svd_torch_inverse(low_rank_data, pca_dim, svd_cache, reinit=True, pred_len=None, device='cpu'):
+    B = low_rank_data.shape[0]
+
+    svd_components = svd_cache.components
+    if pca_dim == "all":
+        # components: [rank, T*D]
+        # low_rank_data: [B, rank]
+        rule_inv = 'br,rt->bt'
+        data = torch.einsum(rule_inv, low_rank_data, svd_components)
+        data = data.reshape(B, pred_len, -1)
+    elif pca_dim == "T":
+        # components: [D, rank, T]
+        # low_rank_data: [B, rank, D]
+        rule_inv = 'brd,drt->btd'
+        data = torch.einsum(rule_inv, low_rank_data, svd_components)
+    elif pca_dim == "D":
+        # components: [T, rank, D]
+        # low_rank_data: [B, T, rank]
+        rule_inv = 'btr,trd->btd'
+        data = torch.einsum(rule_inv, low_rank_data, svd_components)
+
+    if reinit:
+        mean, std = svd_cache.initializer
+        data = data * std + mean
+
+    return data
 
 
 def svd_torch(data, pca_dim, svd_cache, reinit=True, device='cpu'):
@@ -871,6 +1053,37 @@ def svd_torch(data, pca_dim, svd_cache, reinit=True, device='cpu'):
     return low_rank_data
 
 
+def ica_torch_inverse(low_rank_data, pca_dim, ica_cache, reinit=1, pred_len=None, device='cpu'):
+    B = low_rank_data.shape[0]
+
+    ica_components = ica_cache.components
+    if pca_dim == "all":
+        # components: [rank, T*D]
+        # low_rank_data: [B, rank]
+        rule_inv = 'br,rt->bt'
+        data = torch.einsum(rule_inv, low_rank_data, ica_components)
+        data = data + ica_cache.mean
+        data = data.reshape(B, pred_len, -1)
+    elif pca_dim == "T":
+        # components: [D, rank, T]
+        # low_rank_data: [B, rank, D]
+        rule_inv = 'brd,drt->btd'
+        data = torch.einsum(rule_inv, low_rank_data, ica_components)
+        data = data + ica_cache.mean
+    elif pca_dim == "D":
+        # components: [T, rank, D]
+        # low_rank_data: [B, T, rank]
+        rule_inv = 'btr,trd->btd'
+        data = torch.einsum(rule_inv, low_rank_data, ica_components)
+        data = data + ica_cache.mean
+
+    if reinit:
+        mean, std = ica_cache.initializer
+        data = data * std + mean
+
+    return data
+
+
 def ica_torch(data, pca_dim, ica_cache, reinit=1, device='cpu'):
     B, T, D = data.shape
 
@@ -896,6 +1109,34 @@ def ica_torch(data, pca_dim, ica_cache, reinit=1, device='cpu'):
     low_rank_data = torch.einsum(rule_trans, data, ica_components)
 
     return low_rank_data
+
+
+def robust_ica_torch_inverse(low_rank_data, pca_dim, ica_cache, reinit=1, pred_len=None, device='cpu'):
+    B = low_rank_data.shape[0]
+
+    ica_components = ica_cache.components
+    if pca_dim == "all":
+        # components: [rank, T*D]
+        # low_rank_data: [B, rank]
+        rule_inv = 'br,rt->bt'
+        data = torch.einsum(rule_inv, low_rank_data, ica_components)
+        data = data.reshape(B, pred_len, -1)
+    elif pca_dim == "T":
+        # components: [D, rank, T]
+        # low_rank_data: [B, rank, D]
+        rule_inv = 'brd,drt->btd'
+        data = torch.einsum(rule_inv, low_rank_data, ica_components)
+    elif pca_dim == "D":
+        # components: [T, rank, D]
+        # low_rank_data: [B, T, rank]
+        rule_inv = 'btr,trd->btd'
+        data = torch.einsum(rule_inv, low_rank_data, ica_components)
+
+    if reinit:
+        mean, std = ica_cache.initializer
+        data = data * std + mean
+
+    return data
 
 
 def robust_ica_torch(data, pca_dim, ica_cache, reinit=1, device='cpu'):

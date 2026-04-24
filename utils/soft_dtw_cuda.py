@@ -24,13 +24,12 @@
 ##### from https://github.com/Maghoumi/pytorch-softdtw-cuda
 
 
-import numpy as np
-import torch
-import torch.cuda
-from numba import jit, prange
-from torch.autograd import Function
-from numba import cuda
 import math
+import torch
+
+from numba import cuda, jit, prange
+import numpy as np
+from torch.autograd import Function
 
 # ----------------------------------------------------------------------------------------------------------------------
 @cuda.jit

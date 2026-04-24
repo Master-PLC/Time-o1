@@ -24,16 +24,12 @@
 
 ##### from https://github.com/DYosplay/DsCGAN
 
-
-import numpy as np
 import torch
 import torch.cuda
-from numba import jit
-from torch.autograd import Function
-from numba import cuda
-import math
 
-import pdb
+from numba import cuda, jit
+import numpy as np
+from torch.autograd import Function
 
 # ----------------------------------------------------------------------------------------------------------------------
 @cuda.jit

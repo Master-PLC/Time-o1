@@ -1,5 +1,11 @@
+import sys
+
+from pathlib import Path
+sys.path.append(str(Path(__file__).parents[1]))
+
 import torch
-from .soft_dtw_cuda import _SoftDTWCUDA
+
+from utils.soft_dtw_cuda import _SoftDTWCUDA
 
 
 def pairwise_distances_cuda(x, y=None):

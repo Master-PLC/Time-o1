@@ -1,3 +1,10 @@
+import sys
+
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+from torch.utils.data import DataLoader
+
 from data_provider.data_loader import (
     Dataset_Custom,
     Dataset_Custom_CCA,
@@ -33,7 +40,7 @@ from data_provider.data_loader import (
     UEAloader,
 )
 from data_provider.uea import collate_fn
-from torch.utils.data import DataLoader
+
 
 data_dict = {
     'ETTh1': Dataset_ETT_hour,
