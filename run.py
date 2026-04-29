@@ -30,6 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--rerun', type=int, help='rerun', default=0)
     parser.add_argument('--verbose', type=int, help='verbose', default=0)
     parser.add_argument('--use_profiler', type=int, help='use profiler', default=0)
+    parser.add_argument('--deterministic', type=int, help='use profiler', default=0)
 
     # save
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
@@ -255,6 +256,14 @@ if __name__ == '__main__':
     torch.cuda.manual_seed(fix_seed)
     np.random.seed(fix_seed)
     cp.random.seed(fix_seed)
+
+    if args.deterministic:
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+        torch.use_deterministic_algorithms(True)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
     torch.set_num_threads(args.thread)
 

@@ -30,8 +30,8 @@ pyyaml
 PyWavelets
 reformer-pytorch
 robustica
-scikit-learn
-scikit-learn-intelex
+scikit-learn==1.6.1
+scikit-learn-intelex==2025.5.0
 scipy
 seaborn
 setproctitle

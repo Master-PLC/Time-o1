@@ -149,7 +149,8 @@ for pl in ${pl_list[@]}; do
             --log_path $LOG_PATH \
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
-            --speedup_sklearn 2
+            --speedup_sklearn 2 \
+            --deterministic 1
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
