@@ -26,7 +26,6 @@ openpyxl
 pandas
 patool
 pot
-pyrpca
 pyyaml
 PyWavelets
 reformer-pytorch
