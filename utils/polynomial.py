@@ -264,6 +264,13 @@ def get_cca_projection(X, Y, rank_ratio=1.0, pca_dim="D", speedup_sklearn=0, ali
     return Wx, Wy, means, stds
 
 
+def _to_numpy(arr):
+    """Convert cuML/cupy arrays to numpy to avoid CUDA resource lifecycle issues."""
+    if hasattr(arr, 'to_numpy'):
+        return arr.to_numpy()
+    return np.asarray(arr)
+
+
 def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=0):
     if speedup_sklearn in [0, 1]:
         from sklearn.decomposition import PCA
@@ -291,8 +298,11 @@ def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=
 
         pca = PCA(n_components=n_components)
         pca.fit(data)
-        base = pca.components_  # shape: [rank, T * D]
-        weights = pca.explained_variance_ratio_  # shape: [rank]
+        # Convert to numpy immediately to avoid cuML CUDA resource lifecycle issues
+        # (cupy arrays holding CUDA events can be GC'd after CUDA context is destroyed)
+        base = _to_numpy(pca.components_)      # shape: [rank, T * D]
+        weights = _to_numpy(pca.explained_variance_ratio_)  # shape: [rank]
+        del pca
 
     elif pca_dim == "T":
         pca_components, initializer, weights = [], [], []
@@ -304,8 +314,9 @@ def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=
                 initializer.append((scaler.mean_, scaler.scale_))
             pca = PCA(n_components=n_components)
             pca.fit(chunk)
-            pca_components.append(pca.components_)  # shape: [rank, T]
-            weights.append(pca.explained_variance_ratio_)  # shape: [rank]
+            pca_components.append(_to_numpy(pca.components_))  # shape: [rank, T]
+            weights.append(_to_numpy(pca.explained_variance_ratio_))  # shape: [rank]
+            del pca
 
         if reinit:
             mean = np.array([pair[0] for pair in initializer])  # shape: [D, T]
@@ -325,8 +336,9 @@ def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=
                 initializer.append((scaler.mean_, scaler.scale_))
             pca = PCA(n_components=n_components)
             pca.fit(chunk)
-            pca_components.append(pca.components_)  # shape: [rank, D]
-            weights.append(pca.explained_variance_ratio_)  # shape: [rank]
+            pca_components.append(_to_numpy(pca.components_))  # shape: [rank, D]
+            weights.append(_to_numpy(pca.explained_variance_ratio_))  # shape: [rank]
+            del pca
 
         if reinit:
             mean = np.array([pair[0] for pair in initializer])  # shape: [T, D]
