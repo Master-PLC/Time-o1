@@ -906,21 +906,27 @@ class Dataset_Custom_FA(Dataset_Custom):
         if self.set_type != 0:
             self.pca_components = None
             self.input_components = None
+            self.input_mark_components = None
             return
 
         print("Fitting FA ...")
-        input_seq, label_seq = [], []
+        input_seq, label_seq, input_mark_seq = [], [], []
         for i in range(self.__len__()):
-            inp, label, _, _ = self.__getitem__(i)
+            inp, label, inp_mark, _ = self.__getitem__(i)
             label = label[-self.pred_len:]
             input_seq.append(inp)
             label_seq.append(label)
-        input_seq = np.array(input_seq)  # shape: [N, S, D]
-        label_seq = np.array(label_seq)  # shape: [N, P, D]
+            input_mark_seq.append(inp_mark)
+        input_seq = np.array(input_seq)        # shape: [N, S, D]
+        label_seq = np.array(label_seq)        # shape: [N, P, D]
+        input_mark_seq = np.array(input_mark_seq)  # shape: [N, S, mark_dim]
         self.input_components, self.input_initializer, self.input_mean = get_fa_base(input_seq, input_rank_ratio, pca_dim, reinit)
+        self.input_mark_components, self.input_mark_initializer, self.input_mark_mean = get_fa_base(input_mark_seq, input_rank_ratio, pca_dim, reinit)
         self.fa_components, self.initializer, self.fa_mean = get_fa_base(label_seq, rank_ratio, pca_dim, reinit)
         print(f"Input FA components shape: {self.input_components.shape}")
         print(f"Input FA mean shape: {self.input_mean.shape}")
+        print(f"Input mark FA components shape: {self.input_mark_components.shape}")
+        print(f"Input mark FA mean shape: {self.input_mark_mean.shape}")
         print(f"FA components shape: {self.fa_components.shape}")
         print(f"FA mean shape: {self.fa_mean.shape}")
 
@@ -945,21 +951,27 @@ class Dataset_Custom_RobustPCA(Dataset_Custom):
         if self.set_type != 0:
             self.pca_components = None
             self.input_components = None
+            self.input_mark_components = None
             return
 
         print("Fitting Robust PCA ...")
-        input_seq, label_seq = [], []
+        input_seq, label_seq, input_mark_seq = [], [], []
         for i in range(self.__len__()):
-            inp, label, _, _ = self.__getitem__(i)
+            inp, label, inp_mark, _ = self.__getitem__(i)
             label = label[-self.pred_len:]
             input_seq.append(inp)
             label_seq.append(label)
-        input_seq = np.array(input_seq)  # shape: [N, S, D]
-        label_seq = np.array(label_seq)  # shape: [N, P, D]
+            input_mark_seq.append(inp_mark)
+        input_seq = np.array(input_seq)        # shape: [N, S, D]
+        label_seq = np.array(label_seq)        # shape: [N, P, D]
+        input_mark_seq = np.array(input_mark_seq)  # shape: [N, S, mark_dim]
         self.input_components, self.input_initializer, self.input_mean = get_robustpca_base(input_seq, input_rank_ratio, pca_dim, reinit)
+        self.input_mark_components, self.input_mark_initializer, self.input_mark_mean = get_robustpca_base(input_mark_seq, input_rank_ratio, pca_dim, reinit)
         self.pca_components, self.initializer, self.rpca_mean = get_robustpca_base(label_seq, rank_ratio, pca_dim, reinit)
         print(f"Input PCA components shape: {self.input_components.shape}")
         print(f"Input PCA mean shape: {self.input_mean.shape}")
+        print(f"Input mark PCA components shape: {self.input_mark_components.shape}")
+        print(f"Input mark PCA mean shape: {self.input_mark_mean.shape}")
         print(f"PCA components shape: {self.pca_components.shape}")
         print(f"PCA mean shape: {self.rpca_mean.shape}")
 
@@ -984,20 +996,25 @@ class Dataset_Custom_SVD(Dataset_Custom):
         if self.set_type != 0:
             self.svd_components = None
             self.input_components = None
+            self.input_mark_components = None
             return
 
         print("Fitting SVD ...")
-        input_seq, label_seq = [], []
+        input_seq, label_seq, input_mark_seq = [], [], []
         for i in range(self.__len__()):
-            inp, label, _, _ = self.__getitem__(i)
+            inp, label, inp_mark, _ = self.__getitem__(i)
             label = label[-self.pred_len:]
             input_seq.append(inp)
             label_seq.append(label)
-        input_seq = np.array(input_seq)  # shape: [N, S, D]
-        label_seq = np.array(label_seq)  # shape: [N, P, D]
+            input_mark_seq.append(inp_mark)
+        input_seq = np.array(input_seq)        # shape: [N, S, D]
+        label_seq = np.array(label_seq)        # shape: [N, P, D]
+        input_mark_seq = np.array(input_mark_seq)  # shape: [N, S, mark_dim]
         self.input_components, self.input_initializer = get_svd_base(input_seq, input_rank_ratio, pca_dim, reinit)
+        self.input_mark_components, self.input_mark_initializer = get_svd_base(input_mark_seq, input_rank_ratio, pca_dim, reinit)
         self.svd_components, self.initializer = get_svd_base(label_seq, rank_ratio, pca_dim, reinit)
         print(f"Input SVD components shape: {self.input_components.shape}")
+        print(f"Input mark SVD components shape: {self.input_mark_components.shape}")
         print(f"SVD components shape: {self.svd_components.shape}")
 
 
@@ -1021,22 +1038,29 @@ class Dataset_Custom_ICA(Dataset_Custom):
         if self.set_type != 0:
             self.ica_components = None
             self.input_components = None
+            self.input_mark_components = None
             return
 
         print("Fitting ICA ...")
-        input_seq, label_seq = [], []
+        input_seq, label_seq, input_mark_seq = [], [], []
         for i in range(self.__len__()):
-            inp, label, _, _ = self.__getitem__(i)
+            inp, label, inp_mark, _ = self.__getitem__(i)
             label = label[-self.pred_len:]
             input_seq.append(inp)
             label_seq.append(label)
-        input_seq = np.array(input_seq)  # shape: [N, S, D]
-        label_seq = np.array(label_seq)  # shape: [N, P, D]
+            input_mark_seq.append(inp_mark)
+        input_seq = np.array(input_seq)        # shape: [N, S, D]
+        label_seq = np.array(label_seq)        # shape: [N, P, D]
+        input_mark_seq = np.array(input_mark_seq)  # shape: [N, S, mark_dim]
         self.input_components, self.input_initializer, self.input_mean, self.input_whitening = get_ica_base(input_seq, input_rank_ratio, pca_dim, reinit)
+        self.input_mark_components, self.input_mark_initializer, self.input_mark_mean, self.input_mark_whitening = get_ica_base(input_mark_seq, input_rank_ratio, pca_dim, reinit)
         self.ica_components, self.initializer, self.ica_mean, self.whitening = get_ica_base(label_seq, rank_ratio, pca_dim, reinit)
         print(f"Input ICA components shape: {self.input_components.shape}")
         print(f"Input ICA mean shape: {self.input_mean.shape}")
         print(f"Input ICA whitening shape: {self.input_whitening.shape}")
+        print(f"Input mark ICA components shape: {self.input_mark_components.shape}")
+        print(f"Input mark ICA mean shape: {self.input_mark_mean.shape}")
+        print(f"Input mark ICA whitening shape: {self.input_mark_whitening.shape}")
         print(f"ICA components shape: {self.ica_components.shape}")
         print(f"ICA mean shape: {self.ica_mean.shape}")
         print(f"ICA whitening shape: {self.whitening.shape}")
@@ -1062,20 +1086,25 @@ class Dataset_Custom_RobustICA(Dataset_Custom):
         if self.set_type != 0:
             self.ica_components = None
             self.input_components = None
+            self.input_mark_components = None
             return
 
         print("Fitting Robust ICA ...")
-        input_seq, label_seq = [], []
+        input_seq, label_seq, input_mark_seq = [], [], []
         for i in range(self.__len__()):
-            inp, label, _, _ = self.__getitem__(i)
+            inp, label, inp_mark, _ = self.__getitem__(i)
             label = label[-self.pred_len:]
             input_seq.append(inp)
             label_seq.append(label)
-        input_seq = np.array(input_seq)  # shape: [N, S, D]
-        label_seq = np.array(label_seq)  # shape: [N, P, D]
+            input_mark_seq.append(inp_mark)
+        input_seq = np.array(input_seq)        # shape: [N, S, D]
+        label_seq = np.array(label_seq)        # shape: [N, P, D]
+        input_mark_seq = np.array(input_mark_seq)  # shape: [N, S, mark_dim]
         self.input_components, self.input_initializer = get_robustica_base(input_seq, input_rank_ratio, pca_dim, reinit)
+        self.input_mark_components, self.input_mark_initializer = get_robustica_base(input_mark_seq, input_rank_ratio, pca_dim, reinit)
         self.ica_components, self.initializer = get_robustica_base(label_seq, rank_ratio, pca_dim, reinit)
         print(f"Input Robust ICA components shape: {self.input_components.shape}")
+        print(f"Input mark Robust ICA components shape: {self.input_mark_components.shape}")
         print(f"Robust ICA components shape: {self.ica_components.shape}")
 
 

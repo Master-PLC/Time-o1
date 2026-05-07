@@ -74,34 +74,41 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
 
     def initialize_cache(self, train_data):
         self.input_cache = None
+        self.input_mark_cache = None
         self.output_cache = None
         if self.args.auxi_mode == 'basis':
             if self.args.auxi_type == 'random':
                 self.input_cache = Random_Cache(
-                    rank_ratio=self.args.input_rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.seq_len, 
+                    rank_ratio=self.args.input_rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.seq_len,
                     enc_in=self.args.enc_in, device=self.device
                 )
                 self.output_cache = Random_Cache(
-                    rank_ratio=self.args.rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.pred_len, 
+                    rank_ratio=self.args.rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.pred_len,
                     enc_in=self.args.enc_in, device=self.device
                 )
             elif self.args.auxi_type == 'fa':
                 self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, mean=train_data.input_mean, device=self.device)
+                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, device=self.device)
                 self.output_cache = Basis_Cache(train_data.fa_components, train_data.initializer, mean=train_data.fa_mean, device=self.device)
             elif self.args.auxi_type == 'pca':
                 self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, weights=train_data.input_weights, device=self.device)
+                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, weights=train_data.input_mark_weights, device=self.device)
                 self.output_cache = Basis_Cache(train_data.pca_components, train_data.initializer, weights=train_data.weights, device=self.device)
             elif self.args.auxi_type == 'robustpca':
                 self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, mean=train_data.input_mean, device=self.device)
+                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, device=self.device)
                 self.output_cache = Basis_Cache(train_data.pca_components, train_data.initializer, mean=train_data.rpca_mean, device=self.device)
             elif self.args.auxi_type == 'svd':
                 self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, device=self.device)
+                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, device=self.device)
                 self.output_cache = Basis_Cache(train_data.svd_components, train_data.initializer, device=self.device)
             elif self.args.auxi_type == 'ica':
                 self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, mean=train_data.input_mean, whitening=train_data.input_whitening, device=self.device)
+                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, whitening=train_data.input_mark_whitening, device=self.device)
                 self.output_cache = Basis_Cache(train_data.ica_components, train_data.initializer, mean=train_data.ica_mean, whitening=train_data.whitening, device=self.device)
             elif self.args.auxi_type == 'robustica':
                 self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, device=self.device)
+                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, device=self.device)
                 self.output_cache = Basis_Cache(train_data.ica_components, train_data.initializer, device=self.device)
 
     def input_transform(self, batch_x):
@@ -122,6 +129,25 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
             return robust_pca_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.device)
         elif self.args.input_trans == 'robustica':
             return robust_ica_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.device)
+
+    def input_mark_transform(self, batch_x_mark):
+        if self.input_mark_cache is None:
+            return batch_x_mark
+
+        if self.args.input_trans == 'None':
+            return batch_x_mark
+        elif self.args.input_trans == 'random':
+            return random_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.device)
+        elif self.args.input_trans == 'pca':
+            return pca_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_use_weights, self.args.input_reinit, self.device)
+        elif self.args.input_trans == 'ica':
+            return ica_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.device)
+        elif self.args.input_trans == 'svd':
+            return svd_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.device)
+        elif self.args.input_trans == 'robustpca':
+            return robust_pca_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.device)
+        elif self.args.input_trans == 'robustica':
+            return robust_ica_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.device)
 
     def output_transform(self, outputs):
         if self.output_cache is None:
@@ -155,6 +181,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
             batch_y_mark = None
         else:
             batch_x_mark = batch_x_mark.float().to(self.device)
+            batch_x_mark = self.input_mark_transform(batch_x_mark)
             batch_y_mark = batch_y_mark.float().to(self.device)
 
         # decoder input
