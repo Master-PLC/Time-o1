@@ -1318,7 +1318,6 @@ class Dataset_PEMS_PCA(Dataset_PEMS):
     def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
         self.pca_components = None
         self.input_components = None
-        self.input_mark_components = None
 
         if self.set_type != 0:
             return
@@ -1330,38 +1329,27 @@ class Dataset_PEMS_PCA(Dataset_PEMS):
                 self.input_components = np.load(os.path.join(proj_dir, 'input', f"{self.seq_len}", 'pca_components.npy'))
                 self.input_initializer = np.load(os.path.join(proj_dir, 'input', f"{self.seq_len}", 'initializer.npy'))
                 self.input_weights = np.load(os.path.join(proj_dir, 'input', f"{self.seq_len}", 'weights.npy'))
-            if os.path.exists(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'pca_components.npy')):
-                self.input_mark_components = np.load(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'pca_components.npy'))
-                self.input_mark_initializer = np.load(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'initializer.npy'))
-                self.input_mark_weights = np.load(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'weights.npy'))
             if os.path.exists(os.path.join(proj_dir, 'output', f"{self.pred_len}", 'pca_components.npy')):
                 self.pca_components = np.load(os.path.join(proj_dir, 'output', f"{self.pred_len}", 'pca_components.npy'))
                 self.initializer = np.load(os.path.join(proj_dir, 'output', f"{self.pred_len}", 'initializer.npy'))
                 self.weights = np.load(os.path.join(proj_dir, 'output', f"{self.pred_len}", 'weights.npy'))
 
-        if self.pca_components is None or self.input_components is None or self.input_mark_components is None:
-            input_seq, label_seq, input_mark_seq = [], [], []
+        if self.pca_components is None or self.input_components is None:
+            input_seq, label_seq = [], []
             for i in range(self.__len__()):
-                inp, label, inp_mark, _ = self.__getitem__(i)
+                inp, label, _, _ = self.__getitem__(i)
                 label = label[-self.pred_len:]
                 input_seq.append(inp)
                 label_seq.append(label)
-                input_mark_seq.append(inp_mark)
             input_seq = np.array(input_seq)        # shape: [N, S, D]
             label_seq = np.array(label_seq)        # shape: [N, P, D]
-            input_mark_seq = np.array(input_mark_seq)  # shape: [N, S, mark_dim]
             self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, input_rank_ratio, pca_dim, reinit, self.speedup_sklearn)
-            self.input_mark_components, self.input_mark_initializer, self.input_mark_weights = get_pca_base(input_mark_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
                 os.makedirs(os.path.join(proj_dir, 'input', f"{self.seq_len}"), exist_ok=True)
                 np.save(os.path.join(proj_dir, 'input', f"{self.seq_len}", 'pca_components.npy'), self.input_components)
                 np.save(os.path.join(proj_dir, 'input', f"{self.seq_len}", 'initializer.npy'), self.input_initializer)
                 np.save(os.path.join(proj_dir, 'input', f"{self.seq_len}", 'weights.npy'), self.input_weights)
-                os.makedirs(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}"), exist_ok=True)
-                np.save(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'pca_components.npy'), self.input_mark_components)
-                np.save(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'initializer.npy'), self.input_mark_initializer)
-                np.save(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'weights.npy'), self.input_mark_weights)
                 os.makedirs(os.path.join(proj_dir, 'output', f"{self.pred_len}"), exist_ok=True)
                 np.save(os.path.join(proj_dir, 'output', f"{self.pred_len}", 'pca_components.npy'), self.pca_components)
                 np.save(os.path.join(proj_dir, 'output', f"{self.pred_len}", 'initializer.npy'), self.initializer)
@@ -1372,23 +1360,14 @@ class Dataset_PEMS_PCA(Dataset_PEMS):
             proj_dim = int(full_rank * input_rank_ratio)
             self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
             self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
-            full_mark_rank = self.input_mark_weights.shape[-1]
-            mark_proj_dim = int(full_mark_rank * input_rank_ratio)
-            self.input_mark_components = self.input_mark_components[:mark_proj_dim] if pca_dim == "all" else self.input_mark_components[:, :mark_proj_dim]
-            self.input_mark_weights = self.input_mark_weights[:mark_proj_dim] if pca_dim == "all" else self.input_mark_weights[:, :mark_proj_dim]
         elif input_rank_ratio < 0 or input_rank_ratio > 1:
             proj_dim = int(abs(input_rank_ratio))
             proj_dim = min(proj_dim, self.input_weights.shape[-1])
             self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
             self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
-            mark_proj_dim = min(proj_dim, self.input_mark_weights.shape[-1])
-            self.input_mark_components = self.input_mark_components[:mark_proj_dim] if pca_dim == "all" else self.input_mark_components[:, :mark_proj_dim]
-            self.input_mark_weights = self.input_mark_weights[:mark_proj_dim] if pca_dim == "all" else self.input_mark_weights[:, :mark_proj_dim]
 
         print(f"Input PCA components shape: {self.input_components.shape}")
         print(f"Input PCA weights shape: {self.input_weights.shape}")
-        print(f"Input mark PCA components shape: {self.input_mark_components.shape}")
-        print(f"Input mark PCA weights shape: {self.input_mark_weights.shape}")
 
         if rank_ratio and rank_ratio <= 1.0:
             full_rank = self.weights.shape[-1]
@@ -1630,7 +1609,6 @@ class Dataset_M4_PCA(Dataset_M4):
     def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, pca_dim="all", reinit=0):
         self.pca_components = None
         self.input_components = None
-        self.input_mark_components = None
 
         if self.flag != 'train':
             return
@@ -1642,38 +1620,27 @@ class Dataset_M4_PCA(Dataset_M4):
                 self.input_components = np.load(os.path.join(proj_dir, 'input', f"{self.seq_len}", 'pca_components.npy'))
                 self.input_initializer = np.load(os.path.join(proj_dir, 'input', f"{self.seq_len}", 'initializer.npy'))
                 self.input_weights = np.load(os.path.join(proj_dir, 'input', f"{self.seq_len}", 'weights.npy'))
-            if os.path.exists(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'pca_components.npy')):
-                self.input_mark_components = np.load(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'pca_components.npy'))
-                self.input_mark_initializer = np.load(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'initializer.npy'))
-                self.input_mark_weights = np.load(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'weights.npy'))
             if os.path.exists(os.path.join(proj_dir, 'output', f"{self.pred_len}", 'pca_components.npy')):
                 self.pca_components = np.load(os.path.join(proj_dir, 'output', f"{self.pred_len}", 'pca_components.npy'))
                 self.initializer = np.load(os.path.join(proj_dir, 'output', f"{self.pred_len}", 'initializer.npy'))
                 self.weights = np.load(os.path.join(proj_dir, 'output', f"{self.pred_len}", 'weights.npy'))
 
-        if self.pca_components is None or self.input_components is None or self.input_mark_components is None:
-            input_seq, label_seq, input_mark_seq = [], [], []
+        if self.pca_components is None or self.input_components is None:
+            input_seq, label_seq = [], []
             for i in range(self.__len__()):
-                inp, label, inp_mark, _ = self.__getitem__(i)
+                inp, label, _, _ = self.__getitem__(i)
                 label = label[-self.pred_len:]
                 input_seq.append(inp)
                 label_seq.append(label)
-                input_mark_seq.append(inp_mark)
             input_seq = np.array(input_seq)        # shape: [N, S, D]
             label_seq = np.array(label_seq)        # shape: [N, P, D]
-            input_mark_seq = np.array(input_mark_seq)  # shape: [N, S, mark_dim]
             self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, input_rank_ratio, pca_dim, reinit, self.speedup_sklearn)
-            self.input_mark_components, self.input_mark_initializer, self.input_mark_weights = get_pca_base(input_mark_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
                 os.makedirs(os.path.join(proj_dir, 'input', f"{self.seq_len}"), exist_ok=True)
                 np.save(os.path.join(proj_dir, 'input', f"{self.seq_len}", 'pca_components.npy'), self.input_components)
                 np.save(os.path.join(proj_dir, 'input', f"{self.seq_len}", 'initializer.npy'), self.input_initializer)
                 np.save(os.path.join(proj_dir, 'input', f"{self.seq_len}", 'weights.npy'), self.input_weights)
-                os.makedirs(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}"), exist_ok=True)
-                np.save(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'pca_components.npy'), self.input_mark_components)
-                np.save(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'initializer.npy'), self.input_mark_initializer)
-                np.save(os.path.join(proj_dir, 'input_mark', f"{self.seq_len}", 'weights.npy'), self.input_mark_weights)
                 os.makedirs(os.path.join(proj_dir, 'output', f"{self.pred_len}"), exist_ok=True)
                 np.save(os.path.join(proj_dir, 'output', f"{self.pred_len}", 'pca_components.npy'), self.pca_components)
                 np.save(os.path.join(proj_dir, 'output', f"{self.pred_len}", 'initializer.npy'), self.initializer)
@@ -1684,23 +1651,14 @@ class Dataset_M4_PCA(Dataset_M4):
             proj_dim = int(full_rank * input_rank_ratio)
             self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
             self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
-            full_mark_rank = self.input_mark_weights.shape[-1]
-            mark_proj_dim = int(full_mark_rank * input_rank_ratio)
-            self.input_mark_components = self.input_mark_components[:mark_proj_dim] if pca_dim == "all" else self.input_mark_components[:, :mark_proj_dim]
-            self.input_mark_weights = self.input_mark_weights[:mark_proj_dim] if pca_dim == "all" else self.input_mark_weights[:, :mark_proj_dim]
         elif input_rank_ratio < 0 or input_rank_ratio > 1:
             proj_dim = int(abs(input_rank_ratio))
             proj_dim = min(proj_dim, self.input_weights.shape[-1])
             self.input_components = self.input_components[:proj_dim] if pca_dim == "all" else self.input_components[:, :proj_dim]
             self.input_weights = self.input_weights[:proj_dim] if pca_dim == "all" else self.input_weights[:, :proj_dim]
-            mark_proj_dim = min(proj_dim, self.input_mark_weights.shape[-1])
-            self.input_mark_components = self.input_mark_components[:mark_proj_dim] if pca_dim == "all" else self.input_mark_components[:, :mark_proj_dim]
-            self.input_mark_weights = self.input_mark_weights[:mark_proj_dim] if pca_dim == "all" else self.input_mark_weights[:, :mark_proj_dim]
 
         print(f"Input PCA components shape: {self.input_components.shape}")
         print(f"Input PCA weights shape: {self.input_weights.shape}")
-        print(f"Input mark PCA components shape: {self.input_mark_components.shape}")
-        print(f"Input mark PCA weights shape: {self.input_mark_weights.shape}")
 
         if rank_ratio and rank_ratio <= 1.0:
             full_rank = self.weights.shape[-1]
