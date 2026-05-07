@@ -36,6 +36,9 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
         self.pred_len = args.pred_len
         self.label_len = args.label_len
 
+        if args.input_trans != 'None':
+            assert args.input_trans == args.auxi_type, "input_trans and auxi_type must be the same when using transductive learning"
+
         self.input_rank_ratio = args.input_rank_ratio
         if self.input_rank_ratio and self.input_rank_ratio <= 1.0:
             seq_len = int(self.seq_len * self.input_rank_ratio)
@@ -43,7 +46,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
             seq_len = int(abs(args.input_rank_ratio))
             seq_len = min(seq_len, self.seq_len)
         self.input_seq_len = seq_len
-        
+
         self.rank_ratio = args.rank_ratio
         if self.rank_ratio and self.rank_ratio <= 1.0:
             pred_len = int(self.pred_len * self.rank_ratio)

@@ -87,7 +87,7 @@ for pl in ${pl_list[@]}; do
         rm -rf "${OUTPUT_DIR}/stdout.log"
     else
         subdirs=("$RESULTS"/*)
-        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.npy" ]; then
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
             echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
             continue
         fi
@@ -202,7 +202,7 @@ for pl in ${pl_list[@]}; do
         rm -rf "${OUTPUT_DIR}/stdout.log"
     else
         subdirs=("$RESULTS"/*)
-        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.npy" ]; then
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
             echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
             continue
         fi
@@ -318,7 +318,7 @@ for pl in ${pl_list[@]}; do
         rm -rf "${OUTPUT_DIR}/stdout.log"
     else
         subdirs=("$RESULTS"/*)
-        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.npy" ]; then
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
             echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
             continue
         fi
