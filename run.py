@@ -290,19 +290,6 @@ if __name__ == '__main__':
         import cuml
         cuml.set_global_output_type('numpy')
 
-        import atexit
-        import gc
-        def _cleanup_cuda_resources():
-            gc.collect()
-            try:
-                import torch
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-            except Exception:
-                pass
-            gc.collect()
-        atexit.register(_cleanup_cuda_resources)
-
     if args.is_training:
         for ii in range(args.itr):
             # setting record of experiments
