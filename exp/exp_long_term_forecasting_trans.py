@@ -31,7 +31,6 @@ warnings.filterwarnings('ignore')
 
 class Exp_Long_Term_Forecast_Trans(Exp_Basic):
     def __init__(self, args):
-        super().__init__(args)
         self.seq_len = args.seq_len
         self.pred_len = args.pred_len
         self.label_len = args.label_len
@@ -54,6 +53,8 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
             pred_len = int(abs(self.rank_ratio))
             pred_len = min(pred_len, self.pred_len)
         self.output_pred_len = pred_len
+
+        super().__init__(args)
 
     def _build_model(self):
         args = deepcopy(self.args)
