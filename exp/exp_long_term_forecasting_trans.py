@@ -82,33 +82,37 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                     rank_ratio=self.args.input_rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.seq_len,
                     enc_in=self.args.enc_in, device=self.device
                 )
+                self.input_mark_cache = Random_Cache(
+                    rank_ratio=self.args.input_rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.seq_len,
+                    enc_in=self.args.enc_in, device=self.device
+                ) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Random_Cache(
                     rank_ratio=self.args.rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.pred_len,
                     enc_in=self.args.enc_in, device=self.device
                 )
             elif self.args.auxi_type == 'fa':
                 self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, mean=train_data.input_mean, device=self.device)
-                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, device=self.device)
+                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Basis_Cache(train_data.fa_components, train_data.initializer, mean=train_data.fa_mean, device=self.device)
             elif self.args.auxi_type == 'pca':
                 self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, weights=train_data.input_weights, device=self.device)
-                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, weights=train_data.input_mark_weights, device=self.device)
+                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, weights=train_data.input_mark_weights, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Basis_Cache(train_data.pca_components, train_data.initializer, weights=train_data.weights, device=self.device)
             elif self.args.auxi_type == 'robustpca':
                 self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, mean=train_data.input_mean, device=self.device)
-                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, device=self.device)
+                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Basis_Cache(train_data.pca_components, train_data.initializer, mean=train_data.rpca_mean, device=self.device)
             elif self.args.auxi_type == 'svd':
                 self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, device=self.device)
-                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, device=self.device)
+                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Basis_Cache(train_data.svd_components, train_data.initializer, device=self.device)
             elif self.args.auxi_type == 'ica':
                 self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, mean=train_data.input_mean, whitening=train_data.input_whitening, device=self.device)
-                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, whitening=train_data.input_mark_whitening, device=self.device)
+                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, whitening=train_data.input_mark_whitening, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Basis_Cache(train_data.ica_components, train_data.initializer, mean=train_data.ica_mean, whitening=train_data.whitening, device=self.device)
             elif self.args.auxi_type == 'robustica':
                 self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, device=self.device)
-                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, device=self.device)
+                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Basis_Cache(train_data.ica_components, train_data.initializer, device=self.device)
 
     def input_transform(self, batch_x):
