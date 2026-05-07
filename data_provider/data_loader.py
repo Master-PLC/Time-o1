@@ -1343,7 +1343,7 @@ class Dataset_PEMS_PCA(Dataset_PEMS):
                 label_seq.append(label)
             input_seq = np.array(input_seq)        # shape: [N, S, D]
             label_seq = np.array(label_seq)        # shape: [N, P, D]
-            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, input_rank_ratio, pca_dim, reinit, self.speedup_sklearn)
+            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
                 os.makedirs(os.path.join(proj_dir, 'input', f"{self.seq_len}"), exist_ok=True)
@@ -1634,7 +1634,7 @@ class Dataset_M4_PCA(Dataset_M4):
                 label_seq.append(label)
             input_seq = np.array(input_seq)        # shape: [N, S, D]
             label_seq = np.array(label_seq)        # shape: [N, P, D]
-            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, input_rank_ratio, pca_dim, reinit, self.speedup_sklearn)
+            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, reinit, self.speedup_sklearn)
             if self.load_from_disk:
                 os.makedirs(os.path.join(proj_dir, 'input', f"{self.seq_len}"), exist_ok=True)
