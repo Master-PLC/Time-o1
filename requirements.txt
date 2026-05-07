@@ -21,11 +21,11 @@ ipykernel
 isort
 matplotlib
 numba
+numpy<2.0.0
 openpyxl
 pandas
 patool
 pot
-pyrpca
 pyyaml
 PyWavelets
 reformer-pytorch
