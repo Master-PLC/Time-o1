@@ -286,6 +286,9 @@ if __name__ == '__main__':
     if args.speedup_sklearn == 1:
         from sklearnex import patch_sklearn
         patch_sklearn()
+    elif args.speedup_sklearn == 2:
+        import cuml
+        cuml.set_global_output_type('numpy')
 
     if args.is_training:
         for ii in range(args.itr):

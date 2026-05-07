@@ -202,11 +202,32 @@ def chebyshev_torch(data, degree, rtn_data=False, device='cpu'):
         return coeffs
 
 
+def _to_numpy(arr):
+    """Convert cuML/cupy arrays to plain numpy to avoid CUDA resource lifecycle issues.
+
+    cuML returns cupy arrays that hold CUDA events internally.  If those arrays
+    are GC'd *after* the CUDA context has been destroyed (e.g. at process exit),
+    libraft's C++ destructors will call ``cudaEventDestroy`` on an invalid
+    context, producing the error:
+        "cudaEventDestroy initialization error"
+    Calling this immediately after reading any attribute from a cuML estimator
+    ensures the cupy array is converted to a plain numpy array and no CUDA
+    resource is retained.
+    """
+    if hasattr(arr, 'to_numpy'):          # cuml DataFrame / Series
+        return arr.to_numpy()
+    return np.asarray(arr)                # cupy ndarray, numpy ndarray, list …
+
+
 def ensure_array(data):
     if isinstance(data, torch.Tensor):
         return data.cpu().numpy()
     elif isinstance(data, np.ndarray):
         return data
+    else:
+        # Handle cupy arrays and any other array-like (e.g. cuML outputs)
+        # to avoid holding CUDA resources beyond the CUDA context lifetime.
+        return _to_numpy(data)
 
 
 def get_cca_projection(X, Y, rank_ratio=1.0, pca_dim="D", speedup_sklearn=0, align_type=0, add_noise=False):
@@ -252,7 +273,7 @@ def get_cca_projection(X, Y, rank_ratio=1.0, pca_dim="D", speedup_sklearn=0, ali
 
         cca = CCA(n_components=n_components) if speedup_sklearn in [0, 1] else CCA(n_components=n_components, device=device)
         cca.fit(X, Y)
-        
+
         Wx = ensure_array(cca.x_rotations_)  # shape: [D, rank]
         Wy = ensure_array(cca.y_loadings_)  # shape: [D, rank]
         means = [ensure_array(cca._x_mean), ensure_array(cca._y_mean)]
@@ -262,13 +283,6 @@ def get_cca_projection(X, Y, rank_ratio=1.0, pca_dim="D", speedup_sklearn=0, ali
         raise NotImplementedError
 
     return Wx, Wy, means, stds
-
-
-def _to_numpy(arr):
-    """Convert cuML/cupy arrays to numpy to avoid CUDA resource lifecycle issues."""
-    if hasattr(arr, 'to_numpy'):
-        return arr.to_numpy()
-    return np.asarray(arr)
 
 
 def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=0):
