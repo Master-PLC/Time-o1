@@ -39,18 +39,27 @@ use_weights=0
 test_batch_size=1
 
 # datasets to run
-datasets=(ETTh1 ETTh2 ETTm1 ETTm2)
+datasets=(ETTh1)
 
 
 
 # hyper-parameters
 dst=ETTh1
 pl_list=(96 192 336 720)
-lbd_list=(0.0 0.1)
-lr_list=(0.0005 0.001)
-rank_ratio_list=(0.9 1.0)
-input_reinit_list=(0 1)
-input_rank_ratio_list=(0.4 0.6 0.8 1.0)
+# lbd_list=(0.0 0.1)
+# lr_list=(0.0005 0.001)
+# rank_ratio_list=(0.9 1.0)
+# input_reinit_list=(0 1)
+# input_rank_ratio_list=(0.4 0.6 0.8 1.0)
+# reinit_list=(1)
+# auxi_loss_list=(MAE)
+
+
+lbd_list=(0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.9 0.8)
+lr_list=(0.0005 0.001 0.0002 0.0001 0.01 0.02 0.05)
+rank_ratio_list=(0.7 0.9 1.0 0.8 0.6 0.95)
+input_reinit_list=(0)
+input_rank_ratio_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
 
