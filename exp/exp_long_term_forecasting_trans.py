@@ -22,7 +22,8 @@ from utils.fourier_koopman import fourier_loss
 from utils.gdtw_cuda import GromovDTW
 from utils.ldtw_cuda import LDTW
 from utils.polynomial import (pca_torch, Basis_Cache, ica_torch, robust_ica_torch, robust_pca_torch, svd_torch, random_torch, Random_Cache, fa_torch,
-                              pca_torch_inverse, ica_torch_inverse, robust_ica_torch_inverse, robust_pca_torch_inverse, svd_torch_inverse, random_torch_inverse, fa_torch_inverse)
+                              pca_torch_inverse, ica_torch_inverse, robust_ica_torch_inverse, robust_pca_torch_inverse, svd_torch_inverse, random_torch_inverse, fa_torch_inverse,
+                              evd_torch, evd_torch_inverse)
 from utils.soft_dtw_cuda import SoftDTW
 from utils.tools import EarlyStopping, Scheduler
 
@@ -35,8 +36,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
         self.pred_len = args.pred_len
         self.label_len = args.label_len
 
-        if args.input_trans != 'None':
-            assert args.input_trans == args.auxi_type, "input_trans and auxi_type must be the same when using transductive learning"
+        assert args.input_trans in ['None', 'evd'] or (args.input_trans == args.auxi_type), "Input transformation must be the same as auxiliary transformation unless it is None or EVD."
 
         self.input_rank_ratio = args.input_rank_ratio
         if self.input_rank_ratio and self.input_rank_ratio <= 1.0:
@@ -75,44 +75,62 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
     def initialize_cache(self, train_data):
         self.input_cache = None
         self.input_mark_cache = None
+        self.output_trans_cache = None
+
+        if self.args.input_trans == 'random':
+            self.input_cache = Random_Cache(
+                rank_ratio=self.args.input_rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.seq_len,
+                enc_in=self.args.enc_in, device=self.device
+            )
+            self.input_mark_cache = Random_Cache(
+                rank_ratio=self.args.input_rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.seq_len,
+                enc_in=self.args.enc_in, device=self.device
+            ) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
+        elif self.args.input_trans == 'fa':
+            self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, mean=train_data.input_mean, device=self.device)
+            self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
+        elif self.args.input_trans == 'pca':
+            self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, weights=train_data.input_weights, device=self.device)
+            self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, weights=train_data.input_mark_weights, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
+        elif self.args.input_trans == 'robustpca':
+            self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, mean=train_data.input_mean, device=self.device)
+            self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
+        elif self.args.input_trans == 'svd':
+            self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, device=self.device)
+            self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
+        elif self.args.input_trans == 'ica':
+            self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, mean=train_data.input_mean, whitening=train_data.input_whitening, device=self.device)
+            self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, whitening=train_data.input_mark_whitening, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
+        elif self.args.input_trans == 'robustica':
+            self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, device=self.device)
+            self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
+        elif self.args.input_trans == 'evd':
+            input_eigenvectors = np.load(os.path.join(self.args.input_trans_path, f"input/{self.seq_len}", 'eigenvectors.npy'))
+            self.input_cache = Basis_Cache(input_eigenvectors, device=self.device)
+            if not ('PEMS' in self.args.data or 'SRU' in self.args.data):
+                input_mark_eigenvectors = np.load(os.path.join(self.args.input_trans_path, f"input_mark/{self.seq_len}", 'eigenvectors.npy'))
+                self.input_mark_cache = Basis_Cache(input_mark_eigenvectors, device=self.device)
+            output_eigenvectors = np.load(os.path.join(self.args.input_trans_path, f"output/{self.pred_len}", 'eigenvectors.npy'))
+            self.output_trans_cache = Basis_Cache(output_eigenvectors, device=self.device)
+
         self.output_cache = None
         if self.args.auxi_mode == 'basis':
             if self.args.auxi_type == 'random':
-                self.input_cache = Random_Cache(
-                    rank_ratio=self.args.input_rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.seq_len,
-                    enc_in=self.args.enc_in, device=self.device
-                )
-                self.input_mark_cache = Random_Cache(
-                    rank_ratio=self.args.input_rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.seq_len,
-                    enc_in=self.args.enc_in, device=self.device
-                ) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Random_Cache(
                     rank_ratio=self.args.rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.pred_len,
                     enc_in=self.args.enc_in, device=self.device
                 )
             elif self.args.auxi_type == 'fa':
-                self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, mean=train_data.input_mean, device=self.device)
-                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Basis_Cache(train_data.fa_components, train_data.initializer, mean=train_data.fa_mean, device=self.device)
             elif self.args.auxi_type == 'pca':
-                self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, weights=train_data.input_weights, device=self.device)
-                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, weights=train_data.input_mark_weights, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Basis_Cache(train_data.pca_components, train_data.initializer, weights=train_data.weights, device=self.device)
             elif self.args.auxi_type == 'robustpca':
-                self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, mean=train_data.input_mean, device=self.device)
-                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Basis_Cache(train_data.pca_components, train_data.initializer, mean=train_data.rpca_mean, device=self.device)
             elif self.args.auxi_type == 'svd':
-                self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, device=self.device)
-                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Basis_Cache(train_data.svd_components, train_data.initializer, device=self.device)
             elif self.args.auxi_type == 'ica':
-                self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, mean=train_data.input_mean, whitening=train_data.input_whitening, device=self.device)
-                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, mean=train_data.input_mark_mean, whitening=train_data.input_mark_whitening, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Basis_Cache(train_data.ica_components, train_data.initializer, mean=train_data.ica_mean, whitening=train_data.whitening, device=self.device)
             elif self.args.auxi_type == 'robustica':
-                self.input_cache = Basis_Cache(train_data.input_components, train_data.input_initializer, device=self.device)
-                self.input_mark_cache = Basis_Cache(train_data.input_mark_components, train_data.input_mark_initializer, device=self.device) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
                 self.output_cache = Basis_Cache(train_data.ica_components, train_data.initializer, device=self.device)
 
     def input_transform(self, batch_x):
@@ -122,17 +140,19 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
         if self.args.input_trans == 'None':
             return batch_x
         elif self.args.input_trans == 'random':
-            return random_torch(batch_x, self.args.pca_dim, self.input_cache, self.device)
+            return random_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'pca':
-            return pca_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_use_weights, self.args.input_reinit, self.device)
+            return pca_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_use_weights, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'ica':
-            return ica_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.device)
+            return ica_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'svd':
-            return svd_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.device)
+            return svd_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'robustpca':
-            return robust_pca_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.device)
+            return robust_pca_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'robustica':
-            return robust_ica_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.device)
+            return robust_ica_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
+        elif self.args.input_trans == 'evd':
+            return evd_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
 
     def input_mark_transform(self, batch_x_mark):
         if self.input_mark_cache is None:
@@ -141,37 +161,40 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
         if self.args.input_trans == 'None':
             return batch_x_mark
         elif self.args.input_trans == 'random':
-            return random_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.device)
+            return random_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'pca':
-            return pca_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_use_weights, self.args.input_reinit, self.device)
+            return pca_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_use_weights, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'ica':
-            return ica_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.device)
+            return ica_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'svd':
-            return svd_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.device)
+            return svd_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'robustpca':
-            return robust_pca_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.device)
+            return robust_pca_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'robustica':
-            return robust_ica_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.device)
+            return robust_ica_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.args.chan_indep, self.device)
 
     def output_transform(self, outputs):
         if self.output_cache is None:
             return outputs
 
-        if self.args.auxi_mode == 'basis':
-            if self.args.auxi_type == "random":
-                return random_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.pred_len, self.device)
-            elif self.args.auxi_type == "fa":
-                return fa_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.device)
-            elif self.args.auxi_type == "pca":
-                return pca_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.use_weights, self.args.reinit, self.pred_len, self.device)
-            elif self.args.auxi_type == "robustpca":
-                return robust_pca_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.device)
-            elif self.args.auxi_type == "svd":
-                return svd_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.device)
-            elif self.args.auxi_type == "ica":
-                return ica_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.device)
-            elif self.args.auxi_type == "robustica":
-                return robust_ica_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.device)
+        if self.args.input_trans == "random":
+            return random_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == "fa":
+            return fa_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == "pca":
+            return pca_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.use_weights, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == "robustpca":
+            return robust_pca_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == "svd":
+            return svd_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == "ica":
+            return ica_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == "robustica":
+            return robust_ica_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == 'evd':
+            return evd_torch_inverse(outputs, self.args.pca_dim, self.output_trans_cache, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == 'None':
+             return outputs
         else:
             return outputs
 
@@ -299,7 +322,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'random_cache': self.output_cache, 'device': self.device
                             }
-                            if self.args.input_trans == 'None':
+                            if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = random_torch(outputs, **kwargs)
                             batch_y = random_torch(batch_y, **kwargs)
                             loss_auxi = outputs_trans - batch_y
@@ -307,7 +330,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'fa_cache': self.output_cache, 'reinit': self.args.reinit, 'device': self.device
                             }
-                            if self.args.input_trans == 'None':
+                            if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = fa_torch(outputs, **kwargs)
                             batch_y = fa_torch(batch_y, **kwargs)
                             loss_auxi = outputs_trans - batch_y
@@ -316,7 +339,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                                 'pca_dim': self.args.pca_dim, 'pca_cache': self.output_cache, 'use_weights': self.args.use_weights, 
                                 'reinit': self.args.reinit, 'device': self.device
                             }
-                            if self.args.input_trans == 'None':
+                            if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = pca_torch(outputs, **kwargs)
                             batch_y = pca_torch(batch_y, **kwargs)
                             loss_auxi = outputs_trans - batch_y
@@ -324,7 +347,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'pca_cache': self.output_cache, 'reinit': self.args.reinit, 'device': self.device
                             }
-                            if self.args.input_trans == 'None':
+                            if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = robust_pca_torch(outputs, **kwargs)
                             batch_y = robust_pca_torch(batch_y, **kwargs)
                             loss_auxi = outputs_trans - batch_y
@@ -332,7 +355,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'svd_cache': self.output_cache, 'reinit': self.args.reinit, 'device': self.device
                             }
-                            if self.args.input_trans == 'None':
+                            if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = svd_torch(outputs, **kwargs)
                             batch_y = svd_torch(batch_y, **kwargs)
                             loss_auxi = outputs_trans - batch_y
@@ -340,7 +363,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'ica_cache': self.output_cache, 'reinit': self.args.reinit, 'device': self.device
                             }
-                            if self.args.input_trans == 'None':
+                            if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = ica_torch(outputs, **kwargs)
                             batch_y = ica_torch(batch_y, **kwargs)
                             loss_auxi = outputs_trans - batch_y
@@ -348,7 +371,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'ica_cache': self.output_cache, 'reinit': self.args.reinit, 'device': self.device
                             }
-                            if self.args.input_trans == 'None':
+                            if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = robust_ica_torch(outputs, **kwargs)
                             batch_y = robust_ica_torch(batch_y, **kwargs)
                             loss_auxi = outputs_trans - batch_y
