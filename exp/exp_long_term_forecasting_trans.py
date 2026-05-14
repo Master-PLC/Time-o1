@@ -14,6 +14,7 @@ import torch.nn as nn
 from tslearn.metrics import dtw as dtw2, dtw_limited_warping_length
 
 from exp.exp_basic import Exp_Basic
+from layers.RevIN import RevIN
 from utils.dilate_loss import dilate_loss
 from utils.dilate_loss_cuda import DilateLossCUDA
 from utils.dpp_loss import dpp_loss
@@ -57,7 +58,13 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
             pred_len = self.pred_len
         self.output_pred_len = pred_len
 
+        self.extra_rev_in = args.extra_rev_in
+        if self.extra_rev_in:
+            self.rev_in = RevIN(args.enc_in, affine=True)
+
         super().__init__(args)
+        if self.extra_rev_in:
+            self.rev_in = self.rev_in.to(self.device)
 
     def _build_model(self):
         args = deepcopy(self.args)
@@ -203,6 +210,8 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
 
     def forward_step(self, batch_x, batch_y, batch_x_mark, batch_y_mark, return_trans=False):
         batch_x = batch_x.float().to(self.device)
+        if self.extra_rev_in:
+            batch_x = self.rev_in(batch_x, mode='norm')
         batch_x = self.input_transform(batch_x)
         batch_y = batch_y.float().to(self.device)
 
@@ -229,6 +238,8 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
         f_dim = -1 if self.args.features == 'MS' else 0
         outputs_trans = outputs[:, -self.output_pred_len:, f_dim:]
         outputs_time = self.output_inverse_transform(outputs_trans)
+        if self.extra_rev_in:
+            outputs_time = self.rev_in(outputs_time, mode='denorm')
         batch_y = batch_y[:, -self.pred_len:, f_dim:]
         if return_trans:
             return outputs_trans, outputs_time, batch_y, attn
@@ -249,9 +260,12 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
 
         train_steps = len(train_loader)
         model_state_last_effective = None
+        rev_in_state_last_effective = None
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
 
         model_optim = self._select_optimizer()
+        if self.extra_rev_in:
+            model_optim.add_param_group({'params': self.rev_in.parameters(), 'lr': self.args.learning_rate})
         if self.args.auxi_mode == 'fourier_koopman':
             freqs = nn.Parameter(torch.tensor(train_data.freqs, device=self.device, dtype=torch.float32))
             model_optim.add_param_group({'params': freqs, 'lr': self.args.learning_rate})
@@ -457,6 +471,8 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                     iter_count = 0
                     time_now = time.time()
                     model_state_last_effective = deepcopy(self.model.state_dict())  # save the last effective model state dict
+                    if self.extra_rev_in:
+                        rev_in_state_last_effective = deepcopy(self.rev_in.state_dict())
 
                 loss.backward()
                 model_optim.step()
@@ -466,6 +482,8 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
 
             if model_state_last_effective is not None and has_nan_in_epoch:
                 self.model.load_state_dict(model_state_last_effective)
+                if self.extra_rev_in and rev_in_state_last_effective is not None:
+                    self.rev_in.load_state_dict(rev_in_state_last_effective)
 
             print("Epoch: {} cost time: {}".format(self.epoch, time.time() - epoch_time))
             train_loss = np.average(train_loss)
@@ -483,7 +501,10 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                     self.epoch, self.step, train_loss, vali_loss
                 )
             )
-            early_stopping(vali_loss, self.model, path)
+            if self.extra_rev_in:
+                early_stopping(vali_loss, self.model, path, rev_in=self.rev_in)
+            else:
+                early_stopping(vali_loss, self.model, path)
             if early_stopping.early_stop:
                 print("Early stopping")
                 break
@@ -493,5 +514,8 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
 
         best_model_path = os.path.join(path, 'checkpoint.pth')
         self.model.load_state_dict(torch.load(best_model_path))
+        if self.extra_rev_in:
+            best_rev_in_path = os.path.join(path, 'rev_in.pth')
+            self.rev_in.load_state_dict(torch.load(best_rev_in_path))
 
         return self.model

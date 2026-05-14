@@ -46,6 +46,7 @@ datasets=(PEMS03)
 # hyper-parameters
 dst=ETTh1
 pl_list=(96 192 336 720)
+extra_rev_in_list=(1 0)
 input_trans_list=(evd)
 
 lambda=1.0
@@ -65,6 +66,7 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -75,7 +77,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -147,11 +149,13 @@ for pl in ${pl_list[@]}; do
             --input_trans ${input_trans} \
             --input_trans_path ${input_trans_path} \
             --chan_indep ${chan_indep} \
+            --extra_rev_in ${extra_rev_in} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -163,6 +167,7 @@ done
 # hyper-parameters
 dst=ETTh2
 pl_list=(96 192 336 720)
+extra_rev_in_list=(1 0)
 input_trans_list=(evd)
 
 lambda=1.0
@@ -182,6 +187,7 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -192,7 +198,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -264,11 +270,13 @@ for pl in ${pl_list[@]}; do
             --input_trans ${input_trans} \
             --input_trans_path ${input_trans_path} \
             --chan_indep ${chan_indep} \
+            --extra_rev_in ${extra_rev_in} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -288,6 +296,7 @@ lr_list=(0.001 0.0005 0.0001)
 rank_ratio_list=(0.2 0.6 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
+extra_rev_in_list=(1 0)
 input_trans_list=(evd)
 
 lradj=type1
@@ -305,6 +314,7 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+for extra_rev_in in ${extra_rev_in_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
 for lr in ${lr_list[@]}; do
@@ -319,7 +329,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -398,6 +408,7 @@ for pl in ${pl_list[@]}; do
             --input_trans ${input_trans} \
             --input_trans_path ${input_trans_path} \
             --chan_indep ${chan_indep} \
+            --extra_rev_in ${extra_rev_in} \
             --speedup_sklearn 2
 
         sleep 5
@@ -421,6 +432,7 @@ done
 # hyper-parameters
 dst=ETTm2
 pl_list=(96 192 336 720)
+extra_rev_in_list=(1 0)
 input_trans_list=(evd)
 
 lambda=1.0
@@ -440,6 +452,7 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -450,7 +463,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -522,11 +535,13 @@ for pl in ${pl_list[@]}; do
             --input_trans ${input_trans} \
             --input_trans_path ${input_trans_path} \
             --chan_indep ${chan_indep} \
+            --extra_rev_in ${extra_rev_in} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -539,6 +554,7 @@ done
 # hyper-parameters
 dst=ECL
 pl_list=(96 192 336 720)
+extra_rev_in_list=(1 0)
 input_trans_list=(evd)
 
 lambda=1.0
@@ -558,6 +574,7 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -568,7 +585,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -642,11 +659,13 @@ for pl in ${pl_list[@]}; do
             --input_trans ${input_trans} \
             --input_trans_path ${input_trans_path} \
             --chan_indep ${chan_indep} \
+            --extra_rev_in ${extra_rev_in} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -658,6 +677,7 @@ done
 # hyper-parameters
 dst=Traffic
 pl_list=(96 192 336 720)
+extra_rev_in_list=(1 0)
 input_trans_list=(evd)
 
 lambda=1.0
@@ -677,6 +697,7 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -687,7 +708,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -761,11 +782,13 @@ for pl in ${pl_list[@]}; do
             --input_trans ${input_trans} \
             --input_trans_path ${input_trans_path} \
             --chan_indep ${chan_indep} \
+            --extra_rev_in ${extra_rev_in} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -778,6 +801,7 @@ done
 # hyper-parameters
 dst=Weather
 pl_list=(96 192 336 720)
+extra_rev_in_list=(1 0)
 input_trans_list=(evd)
 
 lambda=1.0
@@ -797,6 +821,7 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -807,7 +832,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -881,11 +906,13 @@ for pl in ${pl_list[@]}; do
             --input_trans ${input_trans} \
             --input_trans_path ${input_trans_path} \
             --chan_indep ${chan_indep} \
+            --extra_rev_in ${extra_rev_in} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -906,6 +933,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
+extra_rev_in_list=(1 0)
 input_trans_list=(evd)
 
 lradj=type1
@@ -923,6 +951,7 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+for extra_rev_in in ${extra_rev_in_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
 for input_reinit in ${input_reinit_list[@]}; do
@@ -939,7 +968,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -1023,11 +1052,13 @@ for pl in ${pl_list[@]}; do
             --input_trans_path ${input_trans_path} \
             --input_use_weights ${input_use_weights} \
             --chan_indep ${chan_indep} \
+            --extra_rev_in ${extra_rev_in} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -1049,6 +1080,7 @@ done
 # hyper-parameters
 dst=PEMS08
 pl_list=(12 24 36 48)
+extra_rev_in_list=(1 0)
 input_trans_list=(evd)
 
 lambda=1.0
@@ -1068,6 +1100,7 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -1078,7 +1111,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -1152,11 +1185,13 @@ for pl in ${pl_list[@]}; do
             --input_trans ${input_trans} \
             --input_trans_path ${input_trans_path} \
             --chan_indep ${chan_indep} \
+            --extra_rev_in ${extra_rev_in} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
