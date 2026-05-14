@@ -30,7 +30,6 @@ des='Fredformer'
 
 model_name=Fredformer
 
-input_trans=pca
 input_use_weights=0
 auxi_mode=basis
 auxi_type=pca
@@ -46,14 +45,6 @@ datasets=(ETTh1)
 # hyper-parameters
 dst=ETTh1
 pl_list=(96 192 336 720)
-# lbd_list=(0.0 0.1)
-# lr_list=(0.0005 0.001)
-# rank_ratio_list=(0.9 1.0)
-# input_reinit_list=(0 1)
-# input_rank_ratio_list=(0.4 0.6 0.8 1.0)
-# reinit_list=(1)
-# auxi_loss_list=(MAE)
-
 
 lbd_list=(0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.9 0.8)
 lr_list=(0.0005 0.001 0.0002 0.0001 0.01 0.02 0.05)
@@ -62,6 +53,7 @@ input_reinit_list=(0)
 input_rank_ratio_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
+input_trans_list=(same None evd)
 
 lradj=type3
 train_epochs=100
@@ -72,6 +64,13 @@ test_batch_size=1
 rerun=0
 
 for auxi_loss in ${auxi_loss_list[@]}; do
+for input_trans_item in ${input_trans_list[@]}; do
+case $input_trans_item in
+    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    *) chan_indep_list=(0) input_trans=$input_trans_item;;
+esac
+for chan_indep in ${chan_indep_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
 for input_reinit in ${input_reinit_list[@]}; do
@@ -95,9 +94,10 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${input_trans}_${auxi_mode}_${auxi_type}_${input_use_weights}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
+    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -180,14 +180,18 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --input_trans ${input_trans} \
+            --input_trans_path ${input_trans_path} \
             --input_use_weights ${input_use_weights} \
             --input_reinit ${input_reinit} \
             --input_rank_ratio ${input_rank_ratio} \
+            --chan_indep ${chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -212,6 +216,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
+input_trans_list=(same None evd)
 
 lradj=type3
 train_epochs=100
@@ -222,6 +227,13 @@ test_batch_size=1
 rerun=0
 
 for auxi_loss in ${auxi_loss_list[@]}; do
+for input_trans_item in ${input_trans_list[@]}; do
+case $input_trans_item in
+    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    *) chan_indep_list=(0) input_trans=$input_trans_item;;
+esac
+for chan_indep in ${chan_indep_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
 for input_reinit in ${input_reinit_list[@]}; do
@@ -245,9 +257,10 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${input_trans}_${auxi_mode}_${auxi_type}_${input_use_weights}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
+    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -333,14 +346,18 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --input_trans ${input_trans} \
+            --input_trans_path ${input_trans_path} \
             --input_use_weights ${input_use_weights} \
             --input_reinit ${input_reinit} \
             --input_rank_ratio ${input_rank_ratio} \
+            --chan_indep ${chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -366,6 +383,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
+input_trans_list=(same None evd)
 
 lradj=TST
 train_epochs=100
@@ -376,6 +394,13 @@ test_batch_size=1
 rerun=0
 
 for auxi_loss in ${auxi_loss_list[@]}; do
+for input_trans_item in ${input_trans_list[@]}; do
+case $input_trans_item in
+    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    *) chan_indep_list=(0) input_trans=$input_trans_item;;
+esac
+for chan_indep in ${chan_indep_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
 for input_reinit in ${input_reinit_list[@]}; do
@@ -399,9 +424,10 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${input_trans}_${auxi_mode}_${auxi_type}_${input_use_weights}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
+    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -488,14 +514,18 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --input_trans ${input_trans} \
+            --input_trans_path ${input_trans_path} \
             --input_use_weights ${input_use_weights} \
             --input_reinit ${input_reinit} \
             --input_rank_ratio ${input_rank_ratio} \
+            --chan_indep ${chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -521,6 +551,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
+input_trans_list=(same None evd)
 
 lradj=TST
 train_epochs=100
@@ -531,6 +562,13 @@ test_batch_size=1
 rerun=0
 
 for auxi_loss in ${auxi_loss_list[@]}; do
+for input_trans_item in ${input_trans_list[@]}; do
+case $input_trans_item in
+    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    *) chan_indep_list=(0) input_trans=$input_trans_item;;
+esac
+for chan_indep in ${chan_indep_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
 for input_reinit in ${input_reinit_list[@]}; do
@@ -554,9 +592,10 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${input_trans}_${auxi_mode}_${auxi_type}_${input_use_weights}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
+    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -643,14 +682,18 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --input_trans ${input_trans} \
+            --input_trans_path ${input_trans_path} \
             --input_use_weights ${input_use_weights} \
             --input_reinit ${input_reinit} \
             --input_rank_ratio ${input_rank_ratio} \
+            --chan_indep ${chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -675,6 +718,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
+input_trans_list=(same None evd)
 
 lradj=TST
 train_epochs=100
@@ -685,6 +729,13 @@ test_batch_size=1
 rerun=0
 
 for auxi_loss in ${auxi_loss_list[@]}; do
+for input_trans_item in ${input_trans_list[@]}; do
+case $input_trans_item in
+    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    *) chan_indep_list=(0) input_trans=$input_trans_item;;
+esac
+for chan_indep in ${chan_indep_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
 for input_reinit in ${input_reinit_list[@]}; do
@@ -708,9 +759,10 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${input_trans}_${auxi_mode}_${auxi_type}_${input_use_weights}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
+    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -797,14 +849,18 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --input_trans ${input_trans} \
+            --input_trans_path ${input_trans_path} \
             --input_use_weights ${input_use_weights} \
             --input_reinit ${input_reinit} \
             --input_rank_ratio ${input_rank_ratio} \
+            --chan_indep ${chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -828,6 +884,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
+input_trans_list=(same None evd)
 
 lradj=TST
 train_epochs=100
@@ -838,6 +895,13 @@ test_batch_size=1
 rerun=0
 
 for auxi_loss in ${auxi_loss_list[@]}; do
+for input_trans_item in ${input_trans_list[@]}; do
+case $input_trans_item in
+    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    *) chan_indep_list=(0) input_trans=$input_trans_item;;
+esac
+for chan_indep in ${chan_indep_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
 for input_reinit in ${input_reinit_list[@]}; do
@@ -860,9 +924,10 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${input_trans}_${auxi_mode}_${auxi_type}_${input_use_weights}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
+    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -949,14 +1014,18 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --input_trans ${input_trans} \
+            --input_trans_path ${input_trans_path} \
             --input_use_weights ${input_use_weights} \
             --input_reinit ${input_reinit} \
             --input_rank_ratio ${input_rank_ratio} \
+            --chan_indep ${chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -981,6 +1050,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
+input_trans_list=(same None evd)
 
 lradj=type3
 train_epochs=100
@@ -991,6 +1061,13 @@ test_batch_size=1
 rerun=0
 
 for auxi_loss in ${auxi_loss_list[@]}; do
+for input_trans_item in ${input_trans_list[@]}; do
+case $input_trans_item in
+    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    *) chan_indep_list=(0) input_trans=$input_trans_item;;
+esac
+for chan_indep in ${chan_indep_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
 for input_reinit in ${input_reinit_list[@]}; do
@@ -1014,9 +1091,10 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${input_trans}_${auxi_mode}_${auxi_type}_${input_use_weights}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
+    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -1101,14 +1179,18 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --input_trans ${input_trans} \
+            --input_trans_path ${input_trans_path} \
             --input_use_weights ${input_use_weights} \
             --input_reinit ${input_reinit} \
             --input_rank_ratio ${input_rank_ratio} \
+            --chan_indep ${chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -1134,6 +1216,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
+input_trans_list=(same None evd)
 
 lradj=TST
 train_epochs=100
@@ -1144,6 +1227,13 @@ test_batch_size=1
 rerun=0
 
 for auxi_loss in ${auxi_loss_list[@]}; do
+for input_trans_item in ${input_trans_list[@]}; do
+case $input_trans_item in
+    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    *) chan_indep_list=(0) input_trans=$input_trans_item;;
+esac
+for chan_indep in ${chan_indep_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
 for input_reinit in ${input_reinit_list[@]}; do
@@ -1167,9 +1257,10 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${input_trans}_${auxi_mode}_${auxi_type}_${input_use_weights}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
+    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -1256,14 +1347,18 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --input_trans ${input_trans} \
+            --input_trans_path ${input_trans_path} \
             --input_use_weights ${input_use_weights} \
             --input_reinit ${input_reinit} \
             --input_rank_ratio ${input_rank_ratio} \
+            --chan_indep ${chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -1290,6 +1385,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
+input_trans_list=(same None evd)
 
 lradj=TST
 train_epochs=100
@@ -1300,6 +1396,13 @@ test_batch_size=1
 rerun=0
 
 for auxi_loss in ${auxi_loss_list[@]}; do
+for input_trans_item in ${input_trans_list[@]}; do
+case $input_trans_item in
+    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    *) chan_indep_list=(0) input_trans=$input_trans_item;;
+esac
+for chan_indep in ${chan_indep_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
 for input_reinit in ${input_reinit_list[@]}; do
@@ -1323,9 +1426,10 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${input_trans}_${auxi_mode}_${auxi_type}_${input_use_weights}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
+    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -1412,14 +1516,18 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --input_trans ${input_trans} \
+            --input_trans_path ${input_trans_path} \
             --input_use_weights ${input_use_weights} \
             --input_reinit ${input_reinit} \
             --input_rank_ratio ${input_rank_ratio} \
+            --chan_indep ${chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
