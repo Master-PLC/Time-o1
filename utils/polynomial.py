@@ -816,6 +816,7 @@ def random_torch(data, pca_dim, random_cache, chan_inp=0, device='cpu'):
     elif pca_dim == "T":
         # pca_components shape: [D, rank, T]
         if not chan_inp:
+            pca_components = pca_components.mean(dim=0)  # shape: [rank, T]
             rule_trans = 'btd,rt->br'
         else:
             rule_trans = 'btd,drt->brd'
@@ -859,6 +860,7 @@ def pca_torch_inverse(low_rank_data, pca_dim, pca_cache, use_weights=0, reinit=T
             # forward: 'brd,dr->brd'  =>  inverse: divide by weights transposed to [rank, D] = weights.T
             low_rank_data = low_rank_data / weights.T  # [B, rank, D] / [rank, D] or [B, rank, D] / [rank, 1]
         if not chan_indep:
+            pca_components = pca_components.mean(dim=0)  # shape: [rank, T]
             rule_inv = 'brd,rt->btd'
         else:
             rule_inv = 'brd,drt->btd'
@@ -902,6 +904,7 @@ def pca_torch(data, pca_dim, pca_cache, use_weights=0, reinit=True, chan_indep=0
     elif pca_dim == "T":
         # pca_components shape: [D, rank, T]
         if not chan_indep:
+            pca_components = pca_components.mean(dim=0)  # shape: [rank, T]
             rule_trans = 'btd,rt->brd'
             rule_weight = 'brd,r->brd'
         else:
@@ -942,6 +945,7 @@ def fa_torch_inverse(low_rank_data, pca_dim, fa_cache, reinit=True, pred_len=Non
         # components: [D, rank, T]
         # low_rank_data: [B, rank, D]
         if not chan_indep:
+            pca_components = pca_components.mean(dim=0)  # shape: [rank, T]
             rule_inv = 'brd,rt->btd'
         else:
             rule_inv = 'brd,drt->btd'
@@ -979,6 +983,7 @@ def fa_torch(data, pca_dim, fa_cache, reinit=True, chan_indep=0, device='cpu'):
     elif pca_dim == "T":
         # pca_components shape: [D, rank, T]
         if not chan_indep:
+            pca_components = pca_components.mean(dim=0)  # shape: [rank, T]
             rule_trans = 'btd,rt->brd'
         else:
             rule_trans = 'btd,drt->brd'
@@ -1006,6 +1011,7 @@ def robust_pca_torch_inverse(low_rank_data, pca_dim, pca_cache, reinit=True, pre
         # components: [D, rank, T]
         # low_rank_data: [B, rank, D]
         if not chan_indep:
+            pca_components = pca_components.mean(dim=0)  # shape: [rank, T]
             rule_inv = 'brd,rt->btd'
         else:
             rule_inv = 'brd,drt->btd'
@@ -1043,6 +1049,7 @@ def robust_pca_torch(data, pca_dim, pca_cache, reinit=True, chan_indep=0, device
     elif pca_dim == "T":
         # pca_components shape: [D, rank, T]
         if not chan_indep:
+            pca_components = pca_components.mean(dim=0)  # shape: [rank, T]
             rule_trans = 'btd,rt->brd'
         else:
             rule_trans = 'btd,drt->brd'
@@ -1069,6 +1076,7 @@ def svd_torch_inverse(low_rank_data, pca_dim, svd_cache, reinit=True, pred_len=N
         # components: [D, rank, T]
         # low_rank_data: [B, rank, D]
         if not chan_indep:
+            svd_components = svd_components.mean(dim=0)  # shape: [rank, T]
             rule_inv = 'brd,rt->btd'
         else:
             rule_inv = 'brd,drt->btd'
@@ -1103,6 +1111,7 @@ def svd_torch(data, pca_dim, svd_cache, reinit=True, chan_indep=0, device='cpu')
     elif pca_dim == "T":
         # svd_components shape: [D, rank, T]
         if not chan_indep:
+            svd_components = svd_components.mean(dim=0)  # shape: [rank, T]
             rule_trans = 'btd,rt->brd'
         else:
             rule_trans = 'btd,drt->brd'
@@ -1130,6 +1139,7 @@ def ica_torch_inverse(low_rank_data, pca_dim, ica_cache, reinit=1, pred_len=None
         # components: [D, rank, T]
         # low_rank_data: [B, rank, D]
         if not chan_indep:
+            ica_components = ica_components.mean(dim=0)  # shape: [rank, T]
             rule_inv = 'brd,rt->btd'
         else:
             rule_inv = 'brd,drt->btd'
@@ -1167,6 +1177,7 @@ def ica_torch(data, pca_dim, ica_cache, reinit=1, chan_indep=0, device='cpu'):
     elif pca_dim == "T":
         # pca_components shape: [D, rank, T]
         if not chan_indep:
+            ica_components = ica_components.mean(dim=0)  # shape: [rank, T]
             rule_trans = 'btd,rt->brd'
         else:
             rule_trans = 'btd,drt->brd'
@@ -1193,6 +1204,7 @@ def robust_ica_torch_inverse(low_rank_data, pca_dim, ica_cache, reinit=1, pred_l
         # components: [D, rank, T]
         # low_rank_data: [B, rank, D]
         if not chan_indep:
+            ica_components = ica_components.mean(dim=0)  # shape: [rank, T]
             rule_inv = 'brd,rt->btd'
         else:
             rule_inv = 'brd,drt->btd'
@@ -1227,6 +1239,7 @@ def robust_ica_torch(data, pca_dim, ica_cache, reinit=1, chan_indep=0, device='c
     elif pca_dim == "T":
         # pca_components shape: [D, rank, T]
         if not chan_indep:
+            ica_components = ica_components.mean(dim=0)  # shape: [rank, T]
             rule_trans = 'btd,rt->brd'
         else:
             rule_trans = 'btd,drt->brd'

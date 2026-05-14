@@ -46,12 +46,15 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
             seq_len = min(seq_len, self.seq_len)
         self.input_seq_len = seq_len
 
-        self.rank_ratio = args.rank_ratio
-        if self.rank_ratio and self.rank_ratio <= 1.0:
-            pred_len = int(self.pred_len * self.rank_ratio)
-        elif self.rank_ratio < 0 or self.rank_ratio > 1:
-            pred_len = int(abs(self.rank_ratio))
-            pred_len = min(pred_len, self.pred_len)
+        if args.input_trans not in ['None', 'evd']:
+            self.rank_ratio = args.rank_ratio
+            if self.rank_ratio and self.rank_ratio <= 1.0:
+                pred_len = int(self.pred_len * self.rank_ratio)
+            elif self.rank_ratio < 0 or self.rank_ratio > 1:
+                pred_len = int(abs(self.rank_ratio))
+                pred_len = min(pred_len, self.pred_len)
+        else:
+            pred_len = self.pred_len
         self.output_pred_len = pred_len
 
         super().__init__(args)

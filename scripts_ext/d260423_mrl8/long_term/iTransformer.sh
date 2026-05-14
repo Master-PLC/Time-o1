@@ -24,7 +24,7 @@ job_number=0
 
 DATA_ROOT=$USRDIR/dataset
 OUT_ROOT=/mnt/tidalfs-bdsz01/dataset/llm_ckpt/plc_data/Time-o1
-EXP_NAME=long_term
+EXP_NAME=long_term_evd
 seed=2023
 des='iTransformer'
 
@@ -51,7 +51,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lradj=type1
 train_epochs=10
@@ -63,7 +63,7 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -197,7 +197,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lradj=type1
 train_epochs=10
@@ -209,7 +209,7 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -346,7 +346,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lradj=type1
 train_epochs=10
@@ -358,7 +358,7 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -494,7 +494,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lradj=type1
 train_epochs=10
@@ -506,7 +506,7 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -642,7 +642,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lradj=type1
 train_epochs=10
@@ -655,7 +655,7 @@ for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -792,7 +792,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lradj=type1
 train_epochs=10
@@ -805,7 +805,7 @@ for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -942,7 +942,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lradj=type1
 train_epochs=10
@@ -954,7 +954,7 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -1089,7 +1089,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lradj=type1
 train_epochs=10
@@ -1101,7 +1101,7 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -1239,7 +1239,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lradj=type1
 train_epochs=10
@@ -1251,7 +1251,7 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac

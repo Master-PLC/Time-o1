@@ -46,7 +46,7 @@ datasets=(PEMS03)
 # hyper-parameters
 dst=ETTh1
 pl_list=(96 192 336 720)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lambda=1.0
 
@@ -60,7 +60,7 @@ rerun=0
 
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -163,7 +163,7 @@ done
 # hyper-parameters
 dst=ETTh2
 pl_list=(96 192 336 720)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lambda=1.0
 
@@ -177,7 +177,7 @@ rerun=0
 
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -288,7 +288,7 @@ lr_list=(0.001 0.0005 0.0001)
 rank_ratio_list=(0.2 0.6 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lradj=type1
 train_epochs=10
@@ -300,7 +300,7 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -421,7 +421,7 @@ done
 # hyper-parameters
 dst=ETTm2
 pl_list=(96 192 336 720)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lambda=1.0
 
@@ -435,7 +435,7 @@ rerun=0
 
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -539,7 +539,7 @@ done
 # hyper-parameters
 dst=ECL
 pl_list=(96 192 336 720)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lambda=1.0
 
@@ -553,7 +553,7 @@ rerun=0
 
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -658,7 +658,7 @@ done
 # hyper-parameters
 dst=Traffic
 pl_list=(96 192 336 720)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lambda=1.0
 
@@ -672,7 +672,7 @@ rerun=0
 
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -778,7 +778,7 @@ done
 # hyper-parameters
 dst=Weather
 pl_list=(96 192 336 720)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lambda=1.0
 
@@ -792,7 +792,7 @@ rerun=0
 
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -906,7 +906,7 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lradj=type1
 train_epochs=10
@@ -918,7 +918,7 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
@@ -1049,7 +1049,7 @@ done
 # hyper-parameters
 dst=PEMS08
 pl_list=(12 24 36 48)
-input_trans_list=(same None evd)
+input_trans_list=(evd)
 
 lambda=1.0
 
@@ -1063,7 +1063,7 @@ rerun=0
 
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0 1) input_trans=$input_trans_item;;
+    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
     same) chan_indep_list=(0) input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
