@@ -54,6 +54,8 @@ input_rank_ratio_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
 extra_rev_in_list=(1)
+chan_indep_list_meta=(0 1)
+out_chan_indep_list_meta=(0 1)
 input_trans_list=(same)
 
 lradj=type3
@@ -67,11 +69,17 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
-    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
+    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+case $input_trans_item in
+    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+    same) out_chan_indep_list=($chan_indep);;
+    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+esac
+for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
@@ -96,7 +104,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -188,11 +196,13 @@ for pl in ${pl_list[@]}; do
             --input_rank_ratio ${input_rank_ratio} \
             --chan_indep ${chan_indep} \
             --extra_rev_in ${extra_rev_in} \
+            --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 10000
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -220,7 +230,9 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1 0)
+extra_rev_in_list=(1)
+chan_indep_list_meta=(0 1)
+out_chan_indep_list_meta=(0 1)
 input_trans_list=(evd)
 
 lradj=type3
@@ -234,11 +246,17 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
-    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
+    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+case $input_trans_item in
+    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+    same) out_chan_indep_list=($chan_indep);;
+    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+esac
+for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
@@ -263,7 +281,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -358,11 +376,13 @@ for pl in ${pl_list[@]}; do
             --input_rank_ratio ${input_rank_ratio} \
             --chan_indep ${chan_indep} \
             --extra_rev_in ${extra_rev_in} \
+            --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -391,7 +411,9 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1 0)
+extra_rev_in_list=(1)
+chan_indep_list_meta=(0 1)
+out_chan_indep_list_meta=(0 1)
 input_trans_list=(evd)
 
 lradj=TST
@@ -405,11 +427,17 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
-    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
+    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+case $input_trans_item in
+    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+    same) out_chan_indep_list=($chan_indep);;
+    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+esac
+for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
@@ -434,7 +462,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -530,11 +558,13 @@ for pl in ${pl_list[@]}; do
             --input_rank_ratio ${input_rank_ratio} \
             --chan_indep ${chan_indep} \
             --extra_rev_in ${extra_rev_in} \
+            --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -563,7 +593,9 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1 0)
+extra_rev_in_list=(1)
+chan_indep_list_meta=(0 1)
+out_chan_indep_list_meta=(0 1)
 input_trans_list=(evd)
 
 lradj=TST
@@ -577,11 +609,17 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
-    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
+    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+case $input_trans_item in
+    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+    same) out_chan_indep_list=($chan_indep);;
+    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+esac
+for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
@@ -606,7 +644,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -702,11 +740,13 @@ for pl in ${pl_list[@]}; do
             --input_rank_ratio ${input_rank_ratio} \
             --chan_indep ${chan_indep} \
             --extra_rev_in ${extra_rev_in} \
+            --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -734,7 +774,9 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1 0)
+extra_rev_in_list=(1)
+chan_indep_list_meta=(0 1)
+out_chan_indep_list_meta=(0 1)
 input_trans_list=(evd)
 
 lradj=TST
@@ -748,11 +790,17 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
-    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
+    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+case $input_trans_item in
+    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+    same) out_chan_indep_list=($chan_indep);;
+    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+esac
+for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
@@ -777,7 +825,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -873,11 +921,13 @@ for pl in ${pl_list[@]}; do
             --input_rank_ratio ${input_rank_ratio} \
             --chan_indep ${chan_indep} \
             --extra_rev_in ${extra_rev_in} \
+            --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -904,7 +954,9 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1 0)
+extra_rev_in_list=(1)
+chan_indep_list_meta=(0 1)
+out_chan_indep_list_meta=(0 1)
 input_trans_list=(evd)
 
 lradj=TST
@@ -918,11 +970,17 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
-    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
+    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+case $input_trans_item in
+    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+    same) out_chan_indep_list=($chan_indep);;
+    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+esac
+for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
@@ -946,7 +1004,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -1042,11 +1100,13 @@ for pl in ${pl_list[@]}; do
             --input_rank_ratio ${input_rank_ratio} \
             --chan_indep ${chan_indep} \
             --extra_rev_in ${extra_rev_in} \
+            --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -1074,7 +1134,9 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1 0)
+extra_rev_in_list=(1)
+chan_indep_list_meta=(0 1)
+out_chan_indep_list_meta=(0 1)
 input_trans_list=(evd)
 
 lradj=type3
@@ -1088,11 +1150,17 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
-    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
+    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+case $input_trans_item in
+    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+    same) out_chan_indep_list=($chan_indep);;
+    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+esac
+for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
@@ -1117,7 +1185,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -1211,11 +1279,13 @@ for pl in ${pl_list[@]}; do
             --input_rank_ratio ${input_rank_ratio} \
             --chan_indep ${chan_indep} \
             --extra_rev_in ${extra_rev_in} \
+            --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -1244,7 +1314,9 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1 0)
+extra_rev_in_list=(1)
+chan_indep_list_meta=(0 1)
+out_chan_indep_list_meta=(0 1)
 input_trans_list=(evd)
 
 lradj=TST
@@ -1258,11 +1330,17 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
-    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
+    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+case $input_trans_item in
+    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+    same) out_chan_indep_list=($chan_indep);;
+    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+esac
+for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
@@ -1287,7 +1365,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -1383,11 +1461,13 @@ for pl in ${pl_list[@]}; do
             --input_rank_ratio ${input_rank_ratio} \
             --chan_indep ${chan_indep} \
             --extra_rev_in ${extra_rev_in} \
+            --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -1417,7 +1497,9 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1 0)
+extra_rev_in_list=(1)
+chan_indep_list_meta=(0 1)
+out_chan_indep_list_meta=(0 1)
 input_trans_list=(evd)
 
 lradj=TST
@@ -1431,11 +1513,17 @@ rerun=0
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
-    evd) chan_indep_list=(0) input_trans=$input_trans_item;;
-    same) chan_indep_list=(0) input_trans=$auxi_type;;
+    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
+    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
+case $input_trans_item in
+    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+    same) out_chan_indep_list=($chan_indep);;
+    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
+esac
+for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
@@ -1460,7 +1548,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
@@ -1556,11 +1644,13 @@ for pl in ${pl_list[@]}; do
             --input_rank_ratio ${input_rank_ratio} \
             --chan_indep ${chan_indep} \
             --extra_rev_in ${extra_rev_in} \
+            --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done

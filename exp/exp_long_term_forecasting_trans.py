@@ -337,7 +337,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                         kwargs = {'degree': self.args.leg_degree, 'device': self.device}
                         if self.args.auxi_type == "random":
                             kwargs = {
-                                'pca_dim': self.args.pca_dim, 'random_cache': self.output_cache, 'chan_indep': 1, 'device': self.device
+                                'pca_dim': self.args.pca_dim, 'random_cache': self.output_cache, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
                             if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = random_torch(outputs, **kwargs)
@@ -345,7 +345,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                             loss_auxi = outputs_trans - batch_y
                         elif self.args.auxi_type == "fa":
                             kwargs = {
-                                'pca_dim': self.args.pca_dim, 'fa_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': 1, 'device': self.device
+                                'pca_dim': self.args.pca_dim, 'fa_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
                             if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = fa_torch(outputs, **kwargs)
@@ -354,7 +354,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                         elif self.args.auxi_type == "pca":
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'pca_cache': self.output_cache, 'use_weights': self.args.use_weights, 
-                                'reinit': self.args.reinit, 'chan_indep': 1, 'device': self.device
+                                'reinit': self.args.reinit, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
                             if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = pca_torch(outputs, **kwargs)
@@ -362,7 +362,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                             loss_auxi = outputs_trans - batch_y
                         elif self.args.auxi_type == "robustpca":
                             kwargs = {
-                                'pca_dim': self.args.pca_dim, 'pca_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': 1, 'device': self.device
+                                'pca_dim': self.args.pca_dim, 'pca_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
                             if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = robust_pca_torch(outputs, **kwargs)
@@ -370,7 +370,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                             loss_auxi = outputs_trans - batch_y
                         elif self.args.auxi_type == "svd":
                             kwargs = {
-                                'pca_dim': self.args.pca_dim, 'svd_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': 1, 'device': self.device
+                                'pca_dim': self.args.pca_dim, 'svd_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
                             if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = svd_torch(outputs, **kwargs)
@@ -378,7 +378,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                             loss_auxi = outputs_trans - batch_y
                         elif self.args.auxi_type == "ica":
                             kwargs = {
-                                'pca_dim': self.args.pca_dim, 'ica_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': 1, 'device': self.device
+                                'pca_dim': self.args.pca_dim, 'ica_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
                             if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = ica_torch(outputs, **kwargs)
@@ -386,7 +386,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                             loss_auxi = outputs_trans - batch_y
                         elif self.args.auxi_type == "robustica":
                             kwargs = {
-                                'pca_dim': self.args.pca_dim, 'ica_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': 1, 'device': self.device
+                                'pca_dim': self.args.pca_dim, 'ica_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
                             if self.args.input_trans in ['None', 'evd']:
                                 outputs_trans = robust_ica_torch(outputs, **kwargs)

@@ -249,6 +249,7 @@ if __name__ == '__main__':
     parser.add_argument('--warping_length', type=int, default=96, help='warping_length')
     parser.add_argument('--bandwidth', type=float, default=0.)
     parser.add_argument('--chan_indep', type=int, default=0, help='channel independence; True 1 False 0')
+    parser.add_argument('--out_chan_indep', type=int, default=1, help='output channel independence; True 1 False 0')
     parser.add_argument('--extra_rev_in', type=int, default=0, help='extra_rev_in')
 
     args = parser.parse_args()
