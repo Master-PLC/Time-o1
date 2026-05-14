@@ -53,7 +53,7 @@ input_reinit_list=(0)
 input_rank_ratio_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1 0)
+extra_rev_in_list=(1)
 input_trans_list=(same)
 
 lradj=type3
