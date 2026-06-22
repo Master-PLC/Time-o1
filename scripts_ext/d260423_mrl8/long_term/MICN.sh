@@ -1,7 +1,8 @@
 #!/bin/bash
 MAX_JOBS=48
-GPUS=(0 1 2 3 4 5 6 7)
-TOTAL_GPUS=${#GPUS[@]}
+GPU_COUNT=$(nvidia-smi -L 2>/dev/null | wc -l)
+GPUS=($(seq 0 $((GPU_COUNT - 1))))
+TOTAL_GPUS=$GPU_COUNT
 
 get_gpu_allocation(){
     local job_number=$1
@@ -46,10 +47,10 @@ datasets=(PEMS03)
 # hyper-parameters
 dst=ETTh1
 pl_list=(96 192 336 720)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
 
 lambda=1.0
 
@@ -177,10 +178,10 @@ done
 # hyper-parameters
 dst=ETTh2
 pl_list=(96 192 336 720)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
 
 lambda=1.0
 
@@ -316,10 +317,10 @@ lr_list=(0.001 0.0005 0.0001)
 rank_ratio_list=(0.2 0.6 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
 
 lradj=type1
 train_epochs=10
@@ -462,10 +463,10 @@ done
 # hyper-parameters
 dst=ETTm2
 pl_list=(96 192 336 720)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
 
 lambda=1.0
 
@@ -594,10 +595,10 @@ done
 # hyper-parameters
 dst=ECL
 pl_list=(96 192 336 720)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
 
 lambda=1.0
 
@@ -727,10 +728,10 @@ done
 # hyper-parameters
 dst=Traffic
 pl_list=(96 192 336 720)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
 
 lambda=1.0
 
@@ -861,10 +862,10 @@ done
 # hyper-parameters
 dst=Weather
 pl_list=(96 192 336 720)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
 
 lambda=1.0
 
@@ -1003,10 +1004,10 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
 
 lradj=type1
 train_epochs=10
@@ -1023,16 +1024,11 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+for input_reinit in ${input_reinit_list[@]}; do
 for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
-for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
-for input_reinit in ${input_reinit_list[@]}; do
+for reinit in ${reinit_list[@]}; do
 for input_rank_ratio in ${input_rank_ratio_list[@]}; do
 for lr in ${lr_list[@]}; do
 for lambda in ${lbd_list[@]}; do
@@ -1160,10 +1156,10 @@ done
 # hyper-parameters
 dst=PEMS08
 pl_list=(12 24 36 48)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
 
 lambda=1.0
 

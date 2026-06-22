@@ -174,7 +174,6 @@ dataset/
 /result_long_term_forecast.txt
 /result_imputation.txt
 
-/stats
 /assets
 /assets_ICML2024
 /amlt_scripts

@@ -1,7 +1,8 @@
 #!/bin/bash
-MAX_JOBS=4
-GPUS=(0 1 2 3 4 5 6 7)
-TOTAL_GPUS=${#GPUS[@]}
+MAX_JOBS=64
+GPU_COUNT=$(nvidia-smi -L 2>/dev/null | wc -l)
+GPUS=($(seq 0 $((GPU_COUNT - 1))))
+TOTAL_GPUS=$GPU_COUNT
 
 get_gpu_allocation(){
     local job_number=$1
@@ -24,7 +25,7 @@ job_number=0
 
 DATA_ROOT=$USRDIR/dataset
 OUT_ROOT=/mnt/tidalfs-bdsz01/dataset/llm_ckpt/plc_data/Time-o1
-EXP_NAME=long_term_evd
+EXP_NAME=long_term_ext
 seed=2023
 des='Fredformer'
 
@@ -46,17 +47,90 @@ datasets=(ETTh1)
 dst=ETTh1
 pl_list=(96 192 336 720)
 
-lbd_list=(0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.9 0.8)
-lr_list=(0.0005 0.001 0.0002 0.0001 0.01 0.02 0.05)
-rank_ratio_list=(0.7 0.9 1.0 0.8 0.6 0.95)
-input_reinit_list=(0)
-input_rank_ratio_list=(1.0)
-reinit_list=(1)
+# lbd_list=(0.0 0.1)
+# lr_list=(0.0005 0.001 0.0002 0.0001)
+# rank_ratio_list=(0.8 0.9 1.0)
+# input_reinit_list=(0 1)
+# input_rank_ratio_list=(1.0)
+# reinit_list=(1)
+# auxi_loss_list=(MAE)
+# extra_rev_in_list=(0 1)
+# chan_indep_list_meta=(1)
+# out_chan_indep_list=(1)
+# input_trans_list=(same)
+# lradj_list=(type3)
+
+# lbd_list=(0.0 0.1)
+# lr_list=(0.0005 0.001 0.0012 0.0015 0.002)
+# rank_ratio_list=(0.8 0.9 1.0)
+# input_reinit_list=(1)
+# input_rank_ratio_list=(1.0 0.9 0.8)
+# reinit_list=(1)
+# auxi_loss_list=(MAE)
+# extra_rev_in_list=(0 1)
+# chan_indep_list_meta=(1)
+# out_chan_indep_list=(1)
+# input_trans_list=(same)
+# lradj_list=(type3)
+
+
+# lbd_list=(0.0 0.1 0.2)
+# lr_list=(0.0005 0.001 0.002 0.005)
+# rank_ratio_list=(0.7 0.8 0.9 1.0)
+# input_reinit_list=(1)
+# input_rank_ratio_list=(1.0 0.9 0.8 0.7)
+# reinit_list=(1)
+# auxi_loss_list=(MAE)
+# extra_rev_in_list=(1)
+# chan_indep_list_meta=(1)
+# out_chan_indep_list=(1)
+# input_trans_list=(same)
+# lradj_list=(type3)
+
+
+# lbd_list=(0.0 0.8 0.9)
+# lr_list=(0.0005 0.001 0.002 0.005 0.01)
+# rank_ratio_list=(0.9 1.0)
+# input_reinit_list=(1)
+# input_rank_ratio_list=(1.0 0.8 0.6 0.4)
+# reinit_list=(1)
+# auxi_loss_list=(MAE)
+# extra_rev_in_list=(1)
+# chan_indep_list_meta=(1)
+# out_chan_indep_list=(1)
+# input_trans_list=(same)
+# lradj_list=(type3)
+
+
+
+# lbd_list=(0.0 0.05 0.1)
+# lr_list=(0.0005 0.001 0.002 0.005)
+# rank_ratio_list=(0.9 1.0)
+# input_reinit_list=(1)
+# input_rank_ratio_list=(1.0 0.8 0.6 0.4)
+# reinit_list=(1)
+# auxi_loss_list=(MAE MSE)
+# extra_rev_in_list=(1)
+# chan_indep_list_meta=(1)
+# out_chan_indep_list=(1)
+# input_trans_list=(same)
+# lradj_list=(type3 type1)
+
+
+
+lbd_list=(0.0)
+lr_list=(0.0005 0.001 0.002 0.005)
+rank_ratio_list=(0.9 1.0)
+input_reinit_list=(0 1)
+input_rank_ratio_list=(1.0 0.9)
+reinit_list=(0 1)
 auxi_loss_list=(MAE)
 extra_rev_in_list=(1)
 chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
+out_chan_indep_list=(0 1)
 input_trans_list=(same)
+lradj_list=(type3 type1 TST)
+
 
 lradj=type3
 train_epochs=100
@@ -74,19 +148,15 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+for input_reinit in ${input_reinit_list[@]}; do
 for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
-for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
-for input_reinit in ${input_reinit_list[@]}; do
+for reinit in ${reinit_list[@]}; do
 for input_rank_ratio in ${input_rank_ratio_list[@]}; do
 for lr in ${lr_list[@]}; do
 for lambda in ${lbd_list[@]}; do
+for lradj in ${lradj_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -199,9 +269,10 @@ for pl in ${pl_list[@]}; do
             --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
-        sleep 10000
+        sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -222,18 +293,21 @@ done
 
 # hyper-parameters
 dst=ETTh2
+
 pl_list=(96 192 336 720)
-lbd_list=(0.0 0.2 0.3)
-lr_list=(0.0005 0.001 0.00005)
+lbd_list=(0.0 0.1 0.3)
+lr_list=(0.0005 0.001 0.0001 0.00005)
 rank_ratio_list=(0.6 0.8 1.0)
 input_reinit_list=(0 1)
-input_rank_ratio_list=(0.4 0.6 0.8 1.0)
+input_rank_ratio_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(1)
+input_trans_list=(same)
+lradj_list=(type3)
+
 
 lradj=type3
 train_epochs=100
@@ -251,19 +325,15 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+for input_reinit in ${input_reinit_list[@]}; do
 for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
-for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
-for input_reinit in ${input_reinit_list[@]}; do
+for reinit in ${reinit_list[@]}; do
 for input_rank_ratio in ${input_rank_ratio_list[@]}; do
 for lr in ${lr_list[@]}; do
 for lambda in ${lbd_list[@]}; do
+for lradj in ${lradj_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -394,6 +464,7 @@ done
 done
 done
 done
+done
 
 
 
@@ -405,16 +476,17 @@ done
 dst=ETTm1
 pl_list=(96 192 336 720)
 lbd_list=(0.0 0.1 0.2 0.6)
-lr_list=(0.0005 0.001)
+lr_list=(0.0005 0.001 0.0002)
 rank_ratio_list=(0.7 0.8 1.0)
 input_reinit_list=(0 1)
-input_rank_ratio_list=(0.4 0.6 0.8 1.0)
+input_rank_ratio_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(1)
+input_trans_list=(same)
+lradj_list=(TST)
 
 lradj=TST
 train_epochs=100
@@ -432,19 +504,15 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+for input_reinit in ${input_reinit_list[@]}; do
 for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
-for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
-for input_reinit in ${input_reinit_list[@]}; do
+for reinit in ${reinit_list[@]}; do
 for input_rank_ratio in ${input_rank_ratio_list[@]}; do
 for lr in ${lr_list[@]}; do
 for lambda in ${lbd_list[@]}; do
+for lradj in ${lradj_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -576,6 +644,7 @@ done
 done
 done
 done
+done
 
 
 
@@ -586,17 +655,18 @@ done
 # hyper-parameters
 dst=ETTm2
 pl_list=(96 192 336 720)
-lbd_list=(0.0 0.1)
-lr_list=(0.0005 0.001 0.00005)
+lbd_list=(0.0 0.2)
+lr_list=(0.0005 0.001 0.0002)
 rank_ratio_list=(0.8 0.9 1.0)
 input_reinit_list=(0 1)
-input_rank_ratio_list=(0.4 0.6 0.8 1.0)
+input_rank_ratio_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(1)
+input_trans_list=(same)
+lradj_list=(TST)
 
 lradj=TST
 train_epochs=100
@@ -614,19 +684,15 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+for input_reinit in ${input_reinit_list[@]}; do
 for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
-for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
-for input_reinit in ${input_reinit_list[@]}; do
+for reinit in ${reinit_list[@]}; do
 for input_rank_ratio in ${input_rank_ratio_list[@]}; do
 for lr in ${lr_list[@]}; do
 for lambda in ${lbd_list[@]}; do
+for lradj in ${lradj_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -758,6 +824,7 @@ done
 done
 done
 done
+done
 
 
 
@@ -774,10 +841,11 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
+lradj_list=(type3)
 
 lradj=TST
 train_epochs=100
@@ -795,19 +863,15 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+for input_reinit in ${input_reinit_list[@]}; do
 for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
-for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
-for input_reinit in ${input_reinit_list[@]}; do
+for reinit in ${reinit_list[@]}; do
 for input_rank_ratio in ${input_rank_ratio_list[@]}; do
 for lr in ${lr_list[@]}; do
 for lambda in ${lbd_list[@]}; do
+for lradj in ${lradj_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -939,6 +1003,7 @@ done
 done
 done
 done
+done
 
 
 
@@ -954,10 +1019,11 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
+lradj_list=(type3)
 
 lradj=TST
 train_epochs=100
@@ -975,19 +1041,15 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+for input_reinit in ${input_reinit_list[@]}; do
 for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
-for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
-for input_reinit in ${input_reinit_list[@]}; do
+for reinit in ${reinit_list[@]}; do
 for input_rank_ratio in ${input_rank_ratio_list[@]}; do
 for lr in ${lr_list[@]}; do
 for lambda in ${lbd_list[@]}; do
+for lradj in ${lradj_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -1118,6 +1180,7 @@ done
 done
 done
 done
+done
 
 
 
@@ -1134,10 +1197,11 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
+lradj_list=(type3)
 
 lradj=type3
 train_epochs=100
@@ -1155,19 +1219,15 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+for input_reinit in ${input_reinit_list[@]}; do
 for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
-for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
-for input_reinit in ${input_reinit_list[@]}; do
+for reinit in ${reinit_list[@]}; do
 for input_rank_ratio in ${input_rank_ratio_list[@]}; do
 for lr in ${lr_list[@]}; do
 for lambda in ${lbd_list[@]}; do
+for lradj in ${lradj_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -1297,6 +1357,7 @@ done
 done
 done
 done
+done
 
 
 
@@ -1314,10 +1375,11 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
+lradj_list=(type3)
 
 lradj=TST
 train_epochs=100
@@ -1335,19 +1397,15 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+for input_reinit in ${input_reinit_list[@]}; do
 for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
-for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
-for input_reinit in ${input_reinit_list[@]}; do
+for reinit in ${reinit_list[@]}; do
 for input_rank_ratio in ${input_rank_ratio_list[@]}; do
 for lr in ${lr_list[@]}; do
 for lambda in ${lbd_list[@]}; do
+for lradj in ${lradj_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -1479,6 +1537,7 @@ done
 done
 done
 done
+done
 
 
 
@@ -1497,10 +1556,11 @@ input_reinit_list=(0 1)
 input_rank_ratio_list=(0.4 0.6 0.8 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0 1)
-out_chan_indep_list_meta=(0 1)
-input_trans_list=(evd)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
+out_chan_indep_list=(0 1)
+input_trans_list=(same)
+lradj_list=(type3)
 
 lradj=TST
 train_epochs=100
@@ -1518,19 +1578,15 @@ case $input_trans_item in
     *) chan_indep_list=(0) input_trans=$input_trans_item;;
 esac
 for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+for input_reinit in ${input_reinit_list[@]}; do
 for out_chan_indep in ${out_chan_indep_list[@]}; do
 for extra_rev_in in ${extra_rev_in_list[@]}; do
-for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
-for input_reinit in ${input_reinit_list[@]}; do
+for reinit in ${reinit_list[@]}; do
 for input_rank_ratio in ${input_rank_ratio_list[@]}; do
 for lr in ${lr_list[@]}; do
 for lambda in ${lbd_list[@]}; do
+for lradj in ${lradj_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -1650,6 +1706,7 @@ for pl in ${pl_list[@]}; do
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done

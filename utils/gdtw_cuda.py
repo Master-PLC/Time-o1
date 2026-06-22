@@ -10,8 +10,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# 假设你的附件3和附件4分别保存为了 dtw_cuda.py 和 soft_dtw_cuda.py
-# 如果合并在一个文件里，请直接引用类名
 from utils.dtw_cuda import DTW, _DTWCUDA, _DTW
 from utils.soft_dtw_cuda import SoftDTW, _SoftDTWCUDA, _SoftDTW
 

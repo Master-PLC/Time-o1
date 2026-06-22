@@ -31,7 +31,7 @@ from utils.tools import EarlyStopping, Scheduler
 warnings.filterwarnings('ignore')
 
 
-class Exp_Long_Term_Forecast_Trans(Exp_Basic):
+class Exp_Long_Term_Forecast_InvTrans(Exp_Basic):
     def __init__(self, args):
         self.seq_len = args.seq_len
         self.pred_len = args.pred_len
@@ -47,7 +47,16 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
             seq_len = min(seq_len, self.seq_len)
         self.input_seq_len = seq_len
 
-        self.output_pred_len = self.pred_len
+        if args.input_trans not in ['None', 'evd']:
+            self.rank_ratio = args.rank_ratio
+            if self.rank_ratio and self.rank_ratio <= 1.0:
+                pred_len = int(self.pred_len * self.rank_ratio)
+            elif self.rank_ratio < 0 or self.rank_ratio > 1:
+                pred_len = int(abs(self.rank_ratio))
+                pred_len = min(pred_len, self.pred_len)
+        else:
+            pred_len = self.pred_len
+        self.output_pred_len = pred_len
 
         self.extra_rev_in = args.extra_rev_in
         if self.extra_rev_in:
@@ -174,7 +183,32 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
         elif self.args.input_trans == 'robustica':
             return robust_ica_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.args.chan_indep, self.device)
 
-    def forward_step(self, batch_x, batch_y, batch_x_mark, batch_y_mark):
+    def output_inverse_transform(self, outputs):
+        if self.output_cache is None:
+            return outputs
+
+        if self.args.input_trans == "random":
+            return random_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == "fa":
+            return fa_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == "pca":
+            return pca_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.use_weights, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == "robustpca":
+            return robust_pca_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == "svd":
+            return svd_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == "ica":
+            return ica_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == "robustica":
+            return robust_ica_torch_inverse(outputs, self.args.pca_dim, self.output_cache, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == 'evd':
+            return evd_torch_inverse(outputs, self.args.pca_dim, self.output_trans_cache, self.args.reinit, self.pred_len, self.args.chan_indep, self.device)
+        elif self.args.input_trans == 'None':
+             return outputs
+        else:
+            return outputs
+
+    def forward_step(self, batch_x, batch_y, batch_x_mark, batch_y_mark, return_trans=False):
         batch_x = batch_x.float().to(self.device)
         if self.extra_rev_in:
             batch_x = self.rev_in(batch_x, mode='norm')
@@ -202,11 +236,14 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
             attn = None
 
         f_dim = -1 if self.args.features == 'MS' else 0
-        outputs = outputs[:, -self.output_pred_len:, f_dim:]
+        outputs_trans = outputs[:, -self.output_pred_len:, f_dim:]
+        outputs_time = self.output_inverse_transform(outputs_trans)
         if self.extra_rev_in:
-            outputs = self.rev_in(outputs, mode='denorm')
+            outputs_time = self.rev_in(outputs_time, mode='denorm')
         batch_y = batch_y[:, -self.pred_len:, f_dim:]
-        return outputs, batch_y, attn
+        if return_trans:
+            return outputs_trans, outputs_time, batch_y, attn
+        return outputs_time, batch_y, attn
 
     def train(self, setting):
         train_data, train_loader = self._get_data(flag='train')
@@ -270,7 +307,7 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                 iter_count += 1
                 model_optim.zero_grad()
 
-                outputs, batch_y, attn = self.forward_step(batch_x, batch_y, batch_x_mark, batch_y_mark)
+                outputs_trans, outputs, batch_y, attn = self.forward_step(batch_x, batch_y, batch_x_mark, batch_y_mark, return_trans=True)
 
                 loss = 0
                 if self.args.rec_lambda:
@@ -302,38 +339,59 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'random_cache': self.output_cache, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
-                            loss_auxi = random_torch(outputs, **kwargs) - random_torch(batch_y, **kwargs)
+                            if self.args.input_trans in ['None', 'evd']:
+                                outputs_trans = random_torch(outputs, **kwargs)
+                            batch_y = random_torch(batch_y, **kwargs)
+                            loss_auxi = outputs_trans - batch_y
                         elif self.args.auxi_type == "fa":
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'fa_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
-                            loss_auxi = fa_torch(outputs, **kwargs) - fa_torch(batch_y, **kwargs)
+                            if self.args.input_trans in ['None', 'evd']:
+                                outputs_trans = fa_torch(outputs, **kwargs)
+                            batch_y = fa_torch(batch_y, **kwargs)
+                            loss_auxi = outputs_trans - batch_y
                         elif self.args.auxi_type == "pca":
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'pca_cache': self.output_cache, 'use_weights': self.args.use_weights, 
                                 'reinit': self.args.reinit, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
-                            loss_auxi = pca_torch(outputs, **kwargs) - pca_torch(batch_y, **kwargs)
+                            if self.args.input_trans in ['None', 'evd']:
+                                outputs_trans = pca_torch(outputs, **kwargs)
+                            batch_y = pca_torch(batch_y, **kwargs)
+                            loss_auxi = outputs_trans - batch_y
                         elif self.args.auxi_type == "robustpca":
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'pca_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
-                            loss_auxi = robust_pca_torch(outputs, **kwargs) - robust_pca_torch(batch_y, **kwargs)
+                            if self.args.input_trans in ['None', 'evd']:
+                                outputs_trans = robust_pca_torch(outputs, **kwargs)
+                            batch_y = robust_pca_torch(batch_y, **kwargs)
+                            loss_auxi = outputs_trans - batch_y
                         elif self.args.auxi_type == "svd":
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'svd_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
-                            loss_auxi = svd_torch(outputs, **kwargs) - svd_torch(batch_y, **kwargs)
+                            if self.args.input_trans in ['None', 'evd']:
+                                outputs_trans = svd_torch(outputs, **kwargs)
+                            batch_y = svd_torch(batch_y, **kwargs)
+                            loss_auxi = outputs_trans - batch_y
                         elif self.args.auxi_type == "ica":
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'ica_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
-                            loss_auxi = ica_torch(outputs, **kwargs) - ica_torch(batch_y, **kwargs)
+                            if self.args.input_trans in ['None', 'evd']:
+                                outputs_trans = ica_torch(outputs, **kwargs)
+                            batch_y = ica_torch(batch_y, **kwargs)
+                            loss_auxi = outputs_trans - batch_y
                         elif self.args.auxi_type == "robustica":
                             kwargs = {
                                 'pca_dim': self.args.pca_dim, 'ica_cache': self.output_cache, 'reinit': self.args.reinit, 'chan_indep': self.args.out_chan_indep, 'device': self.device
                             }
-                            loss_auxi = robust_ica_torch(outputs, **kwargs) - robust_ica_torch(batch_y, **kwargs)
+                            if self.args.input_trans in ['None', 'evd']:
+                                outputs_trans = robust_ica_torch(outputs, **kwargs)
+                            batch_y = robust_ica_torch(batch_y, **kwargs)
+                            loss_auxi = outputs_trans - batch_y
                         else:
                             raise NotImplementedError
 
