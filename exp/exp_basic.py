@@ -244,7 +244,7 @@ class Exp_Basic(object):
         if self.args.extra_metrics != []:
             extra_line = ', '.join([f'{k}:{v}' for k, v in extra_metrics.items()])
             line = f'{line}\t| {extra_line}'
-        print(line)
+        print(f"\033[94m{line}\033[0m")
 
         for k, v in full_metrics.items():
             self.writer.add_scalar(f'{self.pred_len}/test/{k}', v, self.epoch)

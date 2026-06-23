@@ -362,6 +362,76 @@ def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=
         base = np.array(pca_components)  # shape: [T, rank, D]
         weights = np.array(weights)  # shape: [T, rank]
 
+    elif pca_dim == "Tucker":
+        import tensorly as tl
+        from tensorly.decomposition import partial_tucker
+        tl.set_backend("numpy")
+
+        if isintance(rank_ratio, float):
+            rank_ratios [rank_ratio] * 2
+        else:
+            rank_ratios = rank_ratio
+        n_components_T = max(1, int(T * rank_ratios[0]))
+        n_components_D = max(1, int(D * rank_ratios[1]))
+
+        # ---- 可选标准化（分别在 mode-T 和 mode-D 展开上做）----
+        initializer_T, initializer_D = [], []
+        data_proc = data.astype(np.float64, copy=True) if reinit else data
+
+        if reinit:
+            # Mode-T: 把 T 当特征维
+            data_T = data_proc.transpose(0, 2, 1).reshape(-1, T)  # [N*D, T]
+            scaler_T = StandardScaler()
+            scaler_T.fit(data_T)
+            initializer_T = [scaler_T.mean_, scaler_T.scale_]     # 长度 T
+
+            # Mode-D: 把 D 当特征维
+            data_D = data_proc.reshape(-1, D)  # [N*T, D]
+            scaler_D = StandardScaler()
+            scaler_D.fit(data_D)
+            initializer_D = [scaler_D.mean_, scaler_D.scale_]     # 长度 D
+
+            # 依次应用到张量上
+            data_proc = (data_proc - scaler_T.mean_[None, :, None]) / scaler_T.scale_[None, :, None]
+            data_proc = (data_proc - scaler_D.mean_[None, None, :]) / scaler_D.scale_[None, None, :]
+
+        # ---- partial_tucker：只在 mode 1 (T) 和 mode 2 (D) 上分解 ----
+        # 返回 (core, factors)，core: [N, R_T, R_D]，factors=[U_T (T×R_T), U_D (D×R_D)]
+        result = partial_tucker(
+            tl.tensor(data_proc),
+            modes=[1, 2],
+            rank=[n_components_T, n_components_D],
+            n_iter_max=100,
+            tol=1e-6,
+            init="svd",
+        )
+        # 兼容不同 tensorly 版本（新版返回 TuckerTensor 或 ((core, factors), errors)）
+        if isinstance(result, tuple) and len(result) == 2 and isinstance(result[0], tuple):
+            (core, factors) = result[0]
+        else:
+            (core, factors) = result  # (core, [U_T, U_D])
+
+        U_T = _to_numpy(factors[0])  # [T, R_T]
+        U_D = _to_numpy(factors[1])  # [D, R_D]
+        core_np = _to_numpy(core)    # [N, R_T, R_D]
+
+        # 与其它分支风格一致：components_ 是 [rank, feat]
+        base_T = U_T.T  # [R_T, T]
+        base_D = U_D.T  # [R_D, D]
+
+        # 用核张量的 mode-k 切片能量近似 explained_variance_ratio_
+        total_energy = (core_np ** 2).sum() + 1e-12
+        weights_T = np.array([
+            (core_np[:, r, :] ** 2).sum() / total_energy for r in range(n_components_T)
+        ])
+        weights_D = np.array([
+            (core_np[:, :, r] ** 2).sum() / total_energy for r in range(n_components_D)
+        ])
+
+        base = [base_T, base_D]                    # list of [R_T, T], [R_D, D]
+        initializer = [initializer_T, initializer_D]
+        weights = [weights_T, weights_D]           # list of [R_T], [R_D]
+
     else:
         raise NotImplementedError
 
@@ -912,13 +982,20 @@ def pca_torch(data, pca_dim, pca_cache, use_weights=0, reinit=True, chan_indep=0
             rule_weight = 'brd,dr->brd'
     elif pca_dim == "D":
         # pca_components shape: [T, rank, D]
-        rule_trans = 'btd,trd->btr'
-        rule_weight = 'btr,tr->btr'
+        if not chan_indep:
+            pca_components = pca_components.mean(dim=0)  # shape: [rank, D]
+            rule_trans = 'btd,rd->btr'
+            rule_weight = 'btr,r->btr'
+        else:
+            rule_trans = 'btd,trd->btr'
+            rule_weight = 'btr,tr->btr'
 
     low_rank_data = torch.einsum(rule_trans, data, pca_components)
     if use_weights:
         weights = pca_cache.weights
         if pca_dim == "T" and not chan_indep:
+            weights = weights.mean(dim=0)  # shape: [rank]
+        elif pca_dim == 'D' and not chan_indep:
             weights = weights.mean(dim=0)  # shape: [rank]
 
         if use_weights == 2:

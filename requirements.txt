@@ -39,6 +39,7 @@ sktime
 sympy
 tensorboard
 tensorboard-plugin-profile
+tensorly
 thop
 torchinfo
 torch_dct

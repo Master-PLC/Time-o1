@@ -1,5 +1,5 @@
 #!/bin/bash
-MAX_JOBS=64
+MAX_JOBS=4
 GPU_COUNT=$(nvidia-smi -L 2>/dev/null | wc -l)
 GPUS=($(seq 0 $((GPU_COUNT - 1))))
 TOTAL_GPUS=$GPU_COUNT
@@ -39,17 +39,17 @@ use_weights=0
 test_batch_size=1
 
 # datasets to run
-datasets=(ETTh2)
+datasets=(ETTh1 ETTh2 ETTm1 ETTm2)
 
 
 
 # hyper-parameters
 dst=ETTh1
-pl_list=(96 192 336 720)
+# pl_list=(96 192 336 720)
 
 # lbd_list=(0.0 0.1)
 # lr_list=(0.0005 0.001 0.0002 0.0001)
-# rank_ratio_list=(0.8 0.9 1.0)
+# rank_ratio_list=(0.5 0.8 0.9 1.0)
 # input_reinit_list=(0 1)
 # input_rank_ratio_list=(1.0)
 # reinit_list=(1)
@@ -58,146 +58,36 @@ pl_list=(96 192 336 720)
 # chan_indep_list_meta=(1)
 # out_chan_indep_list=(1)
 # input_trans_list=(same)
-# lradj_list=(type3)
 
-# lbd_list=(0.0 0.1)
-# lr_list=(0.0005 0.001 0.0012 0.0015 0.002)
-# rank_ratio_list=(0.8 0.9 1.0)
-# input_reinit_list=(1)
-# input_rank_ratio_list=(1.0 0.9 0.8)
-# reinit_list=(1)
-# auxi_loss_list=(MAE)
-# extra_rev_in_list=(0 1)
-# chan_indep_list_meta=(1)
-# out_chan_indep_list=(1)
-# input_trans_list=(same)
-# lradj_list=(type3)
-
-
-# lbd_list=(0.0 0.1 0.2)
-# lr_list=(0.0005 0.001 0.002 0.005)
-# rank_ratio_list=(0.7 0.8 0.9 1.0)
-# input_reinit_list=(1)
-# input_rank_ratio_list=(1.0 0.9 0.8 0.7)
-# reinit_list=(1)
-# auxi_loss_list=(MAE)
-# extra_rev_in_list=(1)
-# chan_indep_list_meta=(1)
-# out_chan_indep_list=(1)
-# input_trans_list=(same)
-# lradj_list=(type3)
-
-
-# lbd_list=(0.0 0.8 0.9)
-# lr_list=(0.0005 0.001 0.002 0.005 0.01)
-# rank_ratio_list=(0.9 1.0)
-# input_reinit_list=(1)
-# input_rank_ratio_list=(1.0 0.8 0.6 0.4)
-# reinit_list=(1)
-# auxi_loss_list=(MAE)
-# extra_rev_in_list=(1)
-# chan_indep_list_meta=(1)
-# out_chan_indep_list=(1)
-# input_trans_list=(same)
-# lradj_list=(type3)
-
-
-
-# lbd_list=(0.0 0.05 0.1)
-# lr_list=(0.0005 0.001 0.002 0.005)
-# rank_ratio_list=(0.9 1.0)
-# input_reinit_list=(1)
-# input_rank_ratio_list=(1.0 0.8 0.6 0.4)
-# reinit_list=(1)
-# auxi_loss_list=(MAE MSE)
-# extra_rev_in_list=(1)
-# chan_indep_list_meta=(1)
-# out_chan_indep_list=(1)
-# input_trans_list=(same)
-# lradj_list=(type3 type1)
-
-
-
-# lbd_list=(0.0)
-# lr_list=(0.0005 0.001 0.002 0.005)
-# rank_ratio_list=(0.8 0.9 1.0)
-# input_reinit_list=(1)
-# input_rank_ratio_list=(1.0 0.9)
-# reinit_list=(1)
-# auxi_loss_list=(MAE)
-# extra_rev_in_list=(0)
-# chan_indep_list_meta=(0 1)
-# out_chan_indep_list=(0 1)
-# input_trans_list=(same)
-# lradj_list=(type3 type1)
-
-
-# lbd_list=(0.0)
-# lr_list=(0.0005 0.001 0.002 0.005)
-# rank_ratio_list=(0.8 0.9 1.0)
-# input_reinit_list=(0)
-# input_rank_ratio_list=(1.0 0.9)
-# reinit_list=(1)
-# auxi_loss_list=(MAE)
-# extra_rev_in_list=(1)
-# chan_indep_list_meta=(0 1)
-# out_chan_indep_list=(0 1)
-# input_trans_list=(same)
-# lradj_list=(type3 type1)
-
-
-
-# pl_list=(96 192)
-# lbd_list=(0.0)
-# lr_list=(0.0005 0.001 0.002 0.005)
-# rank_ratio_list=(0.9 1.0)
-# input_reinit_list=(0 1)
-# input_rank_ratio_list=(1.0 0.9 0.8)
-# reinit_list=(1)
-# auxi_loss_list=(MAE)
-# extra_rev_in_list=(0 1)
-# chan_indep_list_meta=(0 1)
-# out_chan_indep_list=(1)
-# input_trans_list=(same)
-# lradj_list=(type3 type1)
-# bs_list=(256 128)
 
 # pl_list=(96 192 336 720)
-# lbd_list=(0.0)
-# lr_list=(0.001 0.002)
-# rank_ratio_list=(1.0)
-# input_reinit_list=(0)
-# input_rank_ratio_list=(1.0 0.9)
+
+# lbd_list=(0.0 0.1 0.3 0.4 0.5 0.6 0.8 0.9)
+# lr_list=(0.0005 0.001 0.002)
+# rank_ratio_list=(0.6 0.7 0.8 0.9 1.0)
+# input_reinit_list=(0 1)
+# input_rank_ratio_list=(1.0)
 # reinit_list=(1)
 # auxi_loss_list=(MAE)
-# extra_rev_in_list=(1)
-# chan_indep_list_meta=(0)
+# extra_rev_in_list=(0 1)
+# chan_indep_list_meta=(1)
 # out_chan_indep_list=(1)
 # input_trans_list=(same)
-# lradj_list=(type3 type1)
-# bs_list=(256 128)
-# use_weights_list=(0 1)
-# input_use_weights_list=(1 0)
 
+pl_list=(96 336)
 
-
-pl_list=(96 192)
-lbd_list=(0.0)
-lr_list=(0.001 0.002 0.003 0.004 0.005)
-rank_ratio_list=(1.0 0.95 0.97)
-input_reinit_list=(0)
-input_rank_ratio_list=(1.0 0.9 0.95 0.97)
+lbd_list=(0.0 0.05 0.1 0.02)
+lr_list=(0.0005 0.001 0.0002 0.0001)
+rank_ratio_list=(0.7 0.8 0.9 1.0)
+input_reinit_list=(0 1)
+input_rank_ratio_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
 out_chan_indep_list=(1)
 input_trans_list=(same)
 lradj_list=(type3 type1)
-bs_list=(256 128)
-use_weights_list=(0)
-input_use_weights_list=(0)
-
 
 lradj=type3
 train_epochs=100
@@ -207,9 +97,6 @@ test_batch_size=1
 
 rerun=0
 
-for use_weights in ${use_weights_list[@]}; do
-for input_use_weights in ${input_use_weights_list[@]}; do
-for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
@@ -355,9 +242,6 @@ done
 done
 done
 done
-done
-done
-done
 
 
 
@@ -366,40 +250,33 @@ done
 
 # hyper-parameters
 dst=ETTh2
-
 # pl_list=(96 192 336 720)
-# lbd_list=(0.0)
-# lr_list=(0.001 0.002 0.003 0.004 0.005)
-# rank_ratio_list=(1.0 0.9 0.8)
-# input_reinit_list=(0)
-# input_rank_ratio_list=(1.0 0.9 0.8)
+# lbd_list=(0.0 0.1 0.2)
+# lr_list=(0.0005 0.001 0.0002)
+# rank_ratio_list=(0.6 0.8 1.0)
+# input_reinit_list=(0 1)
+# input_rank_ratio_list=(1.0)
 # reinit_list=(1)
 # auxi_loss_list=(MAE)
-# extra_rev_in_list=(1)
-# chan_indep_list_meta=(0)
+# extra_rev_in_list=(0 1)
+# chan_indep_list_meta=(1)
 # out_chan_indep_list=(1)
 # input_trans_list=(same)
-# lradj_list=(type3 type1)
-# bs_list=(256 128)
-# use_weights_list=(0)
-# input_use_weights_list=(0)
+
 
 pl_list=(96 192 336 720)
-lbd_list=(0.0)
-lr_list=(0.001 0.002 0.003)
-rank_ratio_list=(1.0 0.9 0.95 0.97)
-input_reinit_list=(0)
-input_rank_ratio_list=(0.8 0.7 0.6)
+lbd_list=(0.0 0.1 0.05 0.2)
+lr_list=(0.0005 0.001 0.0002 0.0001 0.002)
+rank_ratio_list=(0.9 0.8 1.0)
+input_reinit_list=(0 1)
+input_rank_ratio_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(1)
-chan_indep_list_meta=(0)
+extra_rev_in_list=(0 1)
+chan_indep_list_meta=(1)
 out_chan_indep_list=(1)
 input_trans_list=(same)
-lradj_list=(type3 type1)
-bs_list=(256 128)
-use_weights_list=(0)
-input_use_weights_list=(0)
+lradj_list=(type3 type1 TST)
 
 
 lradj=type3
@@ -410,9 +287,6 @@ test_batch_size=1
 
 rerun=0
 
-for use_weights in ${use_weights_list[@]}; do
-for input_use_weights in ${input_use_weights_list[@]}; do
-for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
 for input_trans_item in ${input_trans_list[@]}; do
 case $input_trans_item in
@@ -561,9 +435,6 @@ done
 done
 done
 done
-done
-done
-done
 
 
 
@@ -573,10 +444,39 @@ done
 
 # hyper-parameters
 dst=ETTm1
-pl_list=(96 192 336 720)
-lbd_list=(0.0 0.1 0.2 0.6)
-lr_list=(0.0005 0.001 0.0002)
-rank_ratio_list=(0.7 0.8 1.0)
+# pl_list=(96 192 336 720)
+# lbd_list=(0.0 0.1 0.2 0.6)
+# lr_list=(0.0005 0.001 0.0002)
+# rank_ratio_list=(0.7 0.8 1.0)
+# input_reinit_list=(0 1)
+# input_rank_ratio_list=(1.0)
+# reinit_list=(1)
+# auxi_loss_list=(MAE)
+# extra_rev_in_list=(0 1)
+# chan_indep_list_meta=(1)
+# out_chan_indep_list=(1)
+# input_trans_list=(same)
+
+
+# pl_list=(96 192 336 720)
+# lbd_list=(0.0 0.1 0.2 0.6)
+# lr_list=(0.0005 0.001 0.0002 0.0001)
+# rank_ratio_list=(0.9 0.8 1.0)
+# input_reinit_list=(0 1)
+# input_rank_ratio_list=(1.0)
+# reinit_list=(1)
+# auxi_loss_list=(MAE)
+# extra_rev_in_list=(0 1)
+# chan_indep_list_meta=(1)
+# out_chan_indep_list=(1)
+# input_trans_list=(same)
+# lradj_list=(type3)
+
+
+pl_list=(192 336 720)
+lbd_list=(0.0 0.1 0.05 0.02)
+lr_list=(0.0005 0.001 0.0002 0.0001 0.002)
+rank_ratio_list=(0.9 0.8 1.0)
 input_reinit_list=(0 1)
 input_rank_ratio_list=(1.0)
 reinit_list=(1)
@@ -585,7 +485,7 @@ extra_rev_in_list=(0 1)
 chan_indep_list_meta=(1)
 out_chan_indep_list=(1)
 input_trans_list=(same)
-lradj_list=(TST)
+lradj_list=(type3 type1 TST)
 
 lradj=TST
 train_epochs=100
@@ -753,9 +653,37 @@ done
 
 # hyper-parameters
 dst=ETTm2
+# pl_list=(96 192 336 720)
+# lbd_list=(0.0 0.1 0.2)
+# lr_list=(0.0005 0.001 0.0002)
+# rank_ratio_list=(0.8 0.9 1.0)
+# input_reinit_list=(0 1)
+# input_rank_ratio_list=(1.0)
+# reinit_list=(1)
+# auxi_loss_list=(MAE)
+# extra_rev_in_list=(0 1)
+# chan_indep_list_meta=(1)
+# out_chan_indep_list=(1)
+# input_trans_list=(same)
+
+
+# pl_list=(96 192 336 720)
+# lbd_list=(0.0 0.1 0.2 0.3 0.4 0.6 0.8)
+# lr_list=(0.0005 0.001 0.0002 0.002)
+# rank_ratio_list=(0.8 0.9 1.0)
+# input_reinit_list=(0 1)
+# input_rank_ratio_list=(1.0)
+# reinit_list=(1)
+# auxi_loss_list=(MAE)
+# extra_rev_in_list=(0 1)
+# chan_indep_list_meta=(1)
+# out_chan_indep_list=(1)
+# input_trans_list=(same)
+# lradj_list=(type3)
+
 pl_list=(96 192 336 720)
-lbd_list=(0.0 0.2)
-lr_list=(0.0005 0.001 0.0002)
+lbd_list=(0.0 0.01 0.02 0.05)
+lr_list=(0.0005 0.001 0.0002 0.002 0.005 0.003 0.0001)
 rank_ratio_list=(0.8 0.9 1.0)
 input_reinit_list=(0 1)
 input_rank_ratio_list=(1.0)
@@ -765,7 +693,7 @@ extra_rev_in_list=(0 1)
 chan_indep_list_meta=(1)
 out_chan_indep_list=(1)
 input_trans_list=(same)
-lradj_list=(TST)
+lradj_list=(type3 type1 TST)
 
 lradj=TST
 train_epochs=100

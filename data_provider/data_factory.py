@@ -155,6 +155,7 @@ def data_provider(args, flag):
             data_percentage=args.data_percentage,
             rank_ratio=args.rank_ratio,
             input_rank_ratio=args.input_rank_ratio,
+            input_pca_dim=args.input_pca_dim,
             pca_dim=args.pca_dim,
             reinit=args.reinit,
             shift=args.shift,

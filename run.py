@@ -142,11 +142,12 @@ if __name__ == '__main__':
     parser.add_argument('--gamma', type=float, default=0.01, help="coef for dilate loss")
 
     # PCA
-    parser.add_argument('--rank_ratio', type=float, default=1.0, help='ratio of low rank for PCA')
+    parser.add_argument('--rank_ratio', action=EvalAction, default=1.0, help='ratio of low rank for PCA')
     parser.add_argument('--input_rank_ratio', type=float, default=1.0, help='ratio of low rank for input PCA')
     parser.add_argument('--input_trans', type=str, default='None', help='input transform, options: [basis, fourier]')
     parser.add_argument('--input_trans_path', type=str, default='None', help='path for input transform')
-    parser.add_argument('--pca_dim', type=str, default="all", help="dimension for PCA, choices in ['all','T','D']")
+    parser.add_argument('--input_pca_dim', type=str, default="T", help="dimension for PCA, choices in ['all','T','D']")
+    parser.add_argument('--pca_dim', type=str, default="T", help="dimension for PCA, choices in ['all','T','D']")
     parser.add_argument('--reinit', type=int, default=0, help="whether reinit for PCA")
     parser.add_argument('--input_reinit', type=int, default=0, help="whether reinit for input PCA")
     parser.add_argument('--dist_scale', type=float, default=0.1, help="scale factor for ot distance matrix")

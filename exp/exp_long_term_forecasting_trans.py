@@ -80,11 +80,11 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
 
         if self.args.input_trans == 'random':
             self.input_cache = Random_Cache(
-                rank_ratio=self.args.input_rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.seq_len,
+                rank_ratio=self.args.input_rank_ratio, pca_dim=self.args.input_pca_dim, pred_len=self.seq_len,
                 enc_in=self.args.enc_in, device=self.device
             )
             self.input_mark_cache = Random_Cache(
-                rank_ratio=self.args.input_rank_ratio, pca_dim=self.args.pca_dim, pred_len=self.seq_len,
+                rank_ratio=self.args.input_rank_ratio, pca_dim=self.args.input_pca_dim, pred_len=self.seq_len,
                 enc_in=self.args.enc_in, device=self.device
             ) if not ('PEMS' in self.args.data or 'SRU' in self.args.data) else None
         elif self.args.input_trans == 'fa':
@@ -141,19 +141,19 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
         if self.args.input_trans == 'None':
             return batch_x
         elif self.args.input_trans == 'random':
-            return random_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.chan_indep, self.device)
+            return random_torch(batch_x, self.args.input_pca_dim, self.input_cache, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'pca':
-            return pca_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_use_weights, self.args.input_reinit, self.args.chan_indep, self.device)
+            return pca_torch(batch_x, self.args.input_pca_dim, self.input_cache, self.args.input_use_weights, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'ica':
-            return ica_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
+            return ica_torch(batch_x, self.args.input_pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'svd':
-            return svd_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
+            return svd_torch(batch_x, self.args.input_pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'robustpca':
-            return robust_pca_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
+            return robust_pca_torch(batch_x, self.args.input_pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'robustica':
-            return robust_ica_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
+            return robust_ica_torch(batch_x, self.args.input_pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'evd':
-            return evd_torch(batch_x, self.args.pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
+            return evd_torch(batch_x, self.args.input_pca_dim, self.input_cache, self.args.input_reinit, self.args.chan_indep, self.device)
 
     def input_mark_transform(self, batch_x_mark):
         if self.input_mark_cache is None:
@@ -162,17 +162,17 @@ class Exp_Long_Term_Forecast_Trans(Exp_Basic):
         if self.args.input_trans == 'None':
             return batch_x_mark
         elif self.args.input_trans == 'random':
-            return random_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.chan_indep, self.device)
+            return random_torch(batch_x_mark, self.args.input_pca_dim, self.input_mark_cache, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'pca':
-            return pca_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_use_weights, self.args.input_reinit, self.args.chan_indep, self.device)
+            return pca_torch(batch_x_mark, self.args.input_pca_dim, self.input_mark_cache, self.args.input_use_weights, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'ica':
-            return ica_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.args.chan_indep, self.device)
+            return ica_torch(batch_x_mark, self.args.input_pca_dim, self.input_mark_cache, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'svd':
-            return svd_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.args.chan_indep, self.device)
+            return svd_torch(batch_x_mark, self.args.input_pca_dim, self.input_mark_cache, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'robustpca':
-            return robust_pca_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.args.chan_indep, self.device)
+            return robust_pca_torch(batch_x_mark, self.args.input_pca_dim, self.input_mark_cache, self.args.input_reinit, self.args.chan_indep, self.device)
         elif self.args.input_trans == 'robustica':
-            return robust_ica_torch(batch_x_mark, self.args.pca_dim, self.input_mark_cache, self.args.input_reinit, self.args.chan_indep, self.device)
+            return robust_ica_torch(batch_x_mark, self.args.input_pca_dim, self.input_mark_cache, self.args.input_reinit, self.args.chan_indep, self.device)
 
     def forward_step(self, batch_x, batch_y, batch_x_mark, batch_y_mark):
         batch_x = batch_x.float().to(self.device)
