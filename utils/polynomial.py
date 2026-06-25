@@ -216,6 +216,8 @@ def _to_numpy(arr):
     """
     if hasattr(arr, 'to_numpy'):          # cuml DataFrame / Series
         return arr.to_numpy()
+    if hasattr(arr, 'numpy'):            # cuml array
+        return arr.detach().cpu().numpy()
     return np.asarray(arr)                # cupy ndarray, numpy ndarray, list …
 
 
@@ -285,6 +287,76 @@ def get_cca_projection(X, Y, rank_ratio=1.0, pca_dim="D", speedup_sklearn=0, ali
     return Wx, Wy, means, stds
 
 
+def _unfold(X, mode):
+    """将张量 X 沿 mode 轴展开为矩阵 [size_mode, -1]"""
+    return X.moveaxis(mode, 0).reshape(X.shape[mode], -1)
+
+
+def _mode_product(X, M, mode):
+    """mode-k 乘积：X ×_mode M，M shape [R, size_mode]，结果 mode 维替换为 R"""
+    return torch.tensordot(M, X, dims=[[1], [mode]]).moveaxis(0, mode)
+
+
+def _top_left_singvecs(M, rank, svd_impl="auto"):
+    """
+    取矩阵 M [d, big] 的前 rank 个左奇异向量, 返回 [d, rank].
+
+    svd_impl:
+      - "svd" : 直接 torch.linalg.svd (适合方阵 / 窄矩阵, 但 big 极大时
+                cuSOLVER gesvdj 会 INVALID_VALUE / 显存爆)
+      - "gram": 用 G = M M^T (shape [d,d]) + eigh, 只依赖 d, 不怕 big 大
+      - "auto": big >= d 时走 gram, 否则走 svd  (HOOI unfold 几乎都是 big >> d)
+    """
+    d, big = M.shape[0], M.shape[1]
+    use_gram = (svd_impl == "gram") or (svd_impl == "auto" and big >= d)
+
+    if use_gram:
+        # G = M M^T, [d, d]
+        G = M @ M.T
+        # eigh 升序, 翻转后取前 rank
+        eigvals, eigvecs = torch.linalg.eigh(G)
+        U = eigvecs.flip(-1)[:, :rank].contiguous()
+        return U
+    else:
+        U, _, _ = torch.linalg.svd(M, full_matrices=False)
+        return U[:, :rank].contiguous()
+
+
+def _partial_tucker_torch(X, modes, ranks, n_iter_max=100, tol=1e-6,
+                          svd_impl="auto"):
+    """
+    纯 PyTorch Partial HOOI Tucker 分解, 全程 GPU, float32.
+    svd_impl 见 _top_left_singvecs.
+    """
+    # HOSVD 初始化
+    factors = []
+    for mode, rank in zip(modes, ranks):
+        factors.append(_top_left_singvecs(_unfold(X, mode), rank, svd_impl))
+
+    norm_X_sq = (X ** 2).sum().item()
+    prev_core_norm_sq = None
+
+    for _ in range(n_iter_max):
+        for i, (mode, rank) in enumerate(zip(modes, ranks)):
+            Y = X
+            for j, (m, f) in enumerate(zip(modes, factors)):
+                if j != i:
+                    Y = _mode_product(Y, f.T, m)
+            factors[i] = _top_left_singvecs(_unfold(Y, mode), rank, svd_impl)
+
+        core = X
+        for mode, f in zip(modes, factors):
+            core = _mode_product(core, f.T, mode)
+
+        core_norm_sq = (core ** 2).sum().item()
+        if prev_core_norm_sq is not None:
+            if norm_X_sq > 0 and abs(core_norm_sq - prev_core_norm_sq) / norm_X_sq < tol:
+                break
+        prev_core_norm_sq = core_norm_sq
+
+    return core, factors
+
+
 def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=0):
     if speedup_sklearn in [0, 1]:
         from sklearn.decomposition import PCA
@@ -300,7 +372,8 @@ def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=
     elif pca_dim == "D":
         full_rank = D
 
-    n_components = int(full_rank * rank_ratio)
+    if pca_dim != "Tucker":
+        n_components = int(full_rank * rank_ratio)
 
     if pca_dim == "all":
         initializer = []
@@ -363,74 +436,78 @@ def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=
         weights = np.array(weights)  # shape: [T, rank]
 
     elif pca_dim == "Tucker":
-        import tensorly as tl
-        from tensorly.decomposition import partial_tucker
-        tl.set_backend("numpy")
-
-        if isintance(rank_ratio, float):
-            rank_ratios [rank_ratio] * 2
+        if isinstance(rank_ratio, (int, float)):
+            rank_ratios = [rank_ratio] * 2
         else:
             rank_ratios = rank_ratio
+        assert len(rank_ratios) == 2, "Tucker 需要 (rT, rD) 两个比例"
         n_components_T = max(1, int(T * rank_ratios[0]))
         n_components_D = max(1, int(D * rank_ratios[1]))
 
-        # ---- 可选标准化（分别在 mode-T 和 mode-D 展开上做）----
+        # float32: 比 float64 省一半显存, SVD/eigh 更快
+        if isinstance(data, np.ndarray):
+            data_proc = torch.from_numpy(data).to(torch.float32)
+        else:
+            data_proc = data.to(torch.float32).clone() if reinit else data.to(torch.float32)
+
         initializer_T, initializer_D = [], []
-        data_proc = data.astype(np.float64, copy=True) if reinit else data
 
         if reinit:
-            # Mode-T: 把 T 当特征维
-            data_T = data_proc.transpose(0, 2, 1).reshape(-1, T)  # [N*D, T]
-            scaler_T = StandardScaler()
-            scaler_T.fit(data_T)
-            initializer_T = [scaler_T.mean_, scaler_T.scale_]     # 长度 T
+            data_T = data_proc.permute(0, 2, 1).reshape(-1, T)
+            mean_T = data_T.mean(dim=0)
+            std_T = data_T.std(dim=0, unbiased=False)
+            std_T = torch.where(std_T == 0, torch.ones_like(std_T), std_T)
+            initializer_T = [mean_T, std_T]
+            data_proc = (data_proc - mean_T[None, :, None]) / std_T[None, :, None]
 
-            # Mode-D: 把 D 当特征维
-            data_D = data_proc.reshape(-1, D)  # [N*T, D]
-            scaler_D = StandardScaler()
-            scaler_D.fit(data_D)
-            initializer_D = [scaler_D.mean_, scaler_D.scale_]     # 长度 D
+            data_D = data_proc.reshape(-1, D)
+            mean_D = data_D.mean(dim=0)
+            std_D = data_D.std(dim=0, unbiased=False)
+            std_D = torch.where(std_D == 0, torch.ones_like(std_D), std_D)
+            initializer_D = [mean_D, std_D]
+            data_proc = (data_proc - mean_D[None, None, :]) / std_D[None, None, :]
 
-            # 依次应用到张量上
-            data_proc = (data_proc - scaler_T.mean_[None, :, None]) / scaler_T.scale_[None, :, None]
-            data_proc = (data_proc - scaler_D.mean_[None, None, :]) / scaler_D.scale_[None, None, :]
+        def _run_tucker(x, svd_impl="auto"):
+            return _partial_tucker_torch(
+                x, modes=[1, 2], ranks=[n_components_T, n_components_D],
+                n_iter_max=500, tol=1e-6, svd_impl=svd_impl,
+            )
 
-        # ---- partial_tucker：只在 mode 1 (T) 和 mode 2 (D) 上分解 ----
-        # 返回 (core, factors)，core: [N, R_T, R_D]，factors=[U_T (T×R_T), U_D (D×R_D)]
-        result = partial_tucker(
-            tl.tensor(data_proc),
-            modes=[1, 2],
-            rank=[n_components_T, n_components_D],
-            n_iter_max=100,
-            tol=1e-6,
-            init="svd",
-        )
-        # 兼容不同 tensorly 版本（新版返回 TuckerTensor 或 ((core, factors), errors)）
-        if isinstance(result, tuple) and len(result) == 2 and isinstance(result[0], tuple):
-            (core, factors) = result[0]
-        else:
-            (core, factors) = result  # (core, [U_T, U_D])
+        if torch.cuda.is_available():
+            data_proc = data_proc.cuda()
 
-        U_T = _to_numpy(factors[0])  # [T, R_T]
-        U_D = _to_numpy(factors[1])  # [D, R_D]
-        core_np = _to_numpy(core)    # [N, R_T, R_D]
+        # 用 Gram + eigh, 避免 [d, N*其它维] 这种超宽矩阵触发 cuSOLVER INVALID_VALUE
+        try:
+            core, factors = _run_tucker(data_proc, svd_impl="auto")
+        except (getattr(torch, "OutOfMemoryError", RuntimeError),) as e:
+            # 兼容老 torch (无 torch.OutOfMemoryError)
+            if "out of memory" not in str(e).lower() and not isinstance(
+                e, getattr(torch, "OutOfMemoryError", tuple())
+            ):
+                raise
+            torch.cuda.empty_cache()
+            print("[Tucker] CUDA OOM, falling back to CPU.")
+            data_proc = data_proc.cpu()
+            core, factors = _run_tucker(data_proc, svd_impl="auto")
 
-        # 与其它分支风格一致：components_ 是 [rank, feat]
-        base_T = U_T.T  # [R_T, T]
-        base_D = U_D.T  # [R_D, D]
+        U_T = factors[0]   # [T, R_T]
+        U_D = factors[1]   # [D, R_D]
 
-        # 用核张量的 mode-k 切片能量近似 explained_variance_ratio_
-        total_energy = (core_np ** 2).sum() + 1e-12
-        weights_T = np.array([
-            (core_np[:, r, :] ** 2).sum() / total_energy for r in range(n_components_T)
-        ])
-        weights_D = np.array([
-            (core_np[:, :, r] ** 2).sum() / total_energy for r in range(n_components_D)
-        ])
+        base_T = U_T.T.contiguous()   # [R_T, T]
+        base_D = U_D.T.contiguous()   # [R_D, D]
 
-        base = [base_T, base_D]                    # list of [R_T, T], [R_D, D]
-        initializer = [initializer_T, initializer_D]
-        weights = [weights_T, weights_D]           # list of [R_T], [R_D]
+        # 权重: 核张量每个分量在能量中的占比 (向量化版)
+        core_sq = core ** 2
+        total_energy = core_sq.sum() + 1e-12
+        weights_T = core_sq.sum(dim=(0, 2)) / total_energy   # [R_T]
+        weights_D = core_sq.sum(dim=(0, 1)) / total_energy   # [R_D]
+
+        base = [_to_numpy(base_T), _to_numpy(base_D)]
+        initializer = [
+            [_to_numpy(x) for x in initializer_T],
+            [_to_numpy(x) for x in initializer_D],
+        ]
+        weights = [_to_numpy(weights_T), _to_numpy(weights_D)]
 
     else:
         raise NotImplementedError
@@ -820,15 +897,25 @@ def get_robustica_base(data, rank_ratio=1.0, pca_dim="all", reinit=0):
     return base, initializer
 
 
+def _to_cache_tensor(value, device='cpu'):
+    if value is None:
+        return None
+    if isinstance(value, (list, tuple)):
+        return [_to_cache_tensor(item, device) for item in value]
+    if isinstance(value, np.ndarray) and value.dtype == object:
+        return [_to_cache_tensor(item, device) for item in value.tolist()]
+    if isinstance(value, torch.Tensor):
+        return value.float().to(device)
+    return torch.from_numpy(value).float().to(device)
+
+
 class Basis_Cache:
     def __init__(self, components, initializer=None, weights=None, mean=None, whitening=None, device='cpu'):
-        self.components = torch.from_numpy(components).float().to(device)
-        self.initializer = [
-            torch.from_numpy(value).float().to(device) for value in initializer
-        ] if initializer is not None else None
-        self.weights = torch.from_numpy(weights).float().to(device) if weights is not None else None
-        self.mean = torch.from_numpy(mean).float().to(device) if mean is not None else None
-        self.whitening = torch.from_numpy(whitening).float().to(device) if whitening is not None else None
+        self.components = _to_cache_tensor(components, device)
+        self.initializer = _to_cache_tensor(initializer, device)
+        self.weights = _to_cache_tensor(weights, device)
+        self.mean = _to_cache_tensor(mean, device)
+        self.whitening = _to_cache_tensor(whitening, device)
 
 
 class Random_Cache:
@@ -958,6 +1045,25 @@ def pca_torch_inverse(low_rank_data, pca_dim, pca_cache, use_weights=0, reinit=T
 
 def pca_torch(data, pca_dim, pca_cache, use_weights=0, reinit=True, chan_indep=0, device='cpu'):
     B, T, D = data.shape
+
+    if pca_dim == "Tucker":
+        if reinit:
+            (mean_T, std_T), (mean_D, std_D) = pca_cache.initializer
+            data = (data - mean_T[None, :, None]) / std_T[None, :, None]
+            data = (data - mean_D[None, None, :]) / std_D[None, None, :]
+
+        component_T, component_D = pca_cache.components
+        low_rank_data = torch.einsum('btd,rt,sd->brs', data, component_T, component_D)
+        if use_weights:
+            weight_T, weight_D = pca_cache.weights
+            if use_weights == 2:
+                weight_T = torch.sqrt(weight_T)
+                weight_D = torch.sqrt(weight_D)
+            elif use_weights == 3:
+                weight_T = torch.pow(weight_T, 2)
+                weight_D = torch.pow(weight_D, 2)
+            low_rank_data = low_rank_data * weight_T[None, :, None] * weight_D[None, None, :]
+        return low_rank_data
 
     if pca_dim == "all":
         data = data.reshape(B, -1)  # reshape to B, TD
