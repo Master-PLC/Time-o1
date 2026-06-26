@@ -287,6 +287,192 @@ def get_cca_projection(X, Y, rank_ratio=1.0, pca_dim="D", speedup_sklearn=0, ali
     return Wx, Wy, means, stds
 
 
+def _estimate_kronecker_covariance(data, reinit=0):
+    """
+    估计 Kronecker 结构的协方差矩阵 Σ_T 和 Σ_D。
+
+    假设 TD×TD 协方差矩阵具有 Kronecker 结构 Σ ≈ Σ_T ⊗ Σ_D，
+    分别沿 T 和 D 维度估计边际协方差矩阵。
+
+    Args:
+        data: numpy 或 torch 张量, shape [N, T, D]
+        reinit: 是否进行标准化 (0 或 1)
+
+    Returns:
+        sigma_T: [T, T] 协方差矩阵
+        sigma_D: [D, D] 协方差矩阵
+        initializer_T: [mean_T, std_T] 标准化参数 (list, 如果 reinit=0 则为空)
+        initializer_D: [mean_D, std_D] 标准化参数 (list, 如果 reinit=0 则为空)
+        data_proc: 预处理后的数据张量 (用于后续的 Flip-Flop 迭代)
+    """
+    N, T, D = data.shape
+    initializer_T, initializer_D = [], []
+
+    if isinstance(data, np.ndarray):
+        data_proc = torch.from_numpy(data).to(torch.float32)
+    else:
+        data_proc = data.to(torch.float32).clone() if reinit else data.to(torch.float32)
+
+    if torch.cuda.is_available():
+        data_proc = data_proc.cuda()
+
+    # ---------- 标准化 ----------
+    if reinit:
+        # T 维标准化: reshape to [N*D, T]
+        data_T = data_proc.permute(0, 2, 1).reshape(-1, T)
+        mean_T = data_T.mean(dim=0)
+        std_T = data_T.std(dim=0, unbiased=False)
+        std_T = torch.where(std_T == 0, torch.ones_like(std_T), std_T)
+        initializer_T = [mean_T, std_T]
+        data_proc = (data_proc - mean_T[None, :, None]) / std_T[None, :, None]
+
+        # D 维标准化: reshape to [N*T, D]
+        data_D = data_proc.reshape(-1, D)
+        mean_D = data_D.mean(dim=0)
+        std_D = data_D.std(dim=0, unbiased=False)
+        std_D = torch.where(std_D == 0, torch.ones_like(std_D), std_D)
+        initializer_D = [mean_D, std_D]
+        data_proc = (data_proc - mean_D[None, None, :]) / std_D[None, None, :]
+
+    # ---------- 计算 Σ_T: 时间维协方差 ----------
+    # 将数据重塑为 [N*D, T], 每行是一个通道在某样本下的时间序列
+    data_T = data_proc.permute(0, 2, 1).reshape(-1, T)
+    data_T_centered = data_T - data_T.mean(dim=0, keepdim=True)
+    sigma_T = (data_T_centered.T @ data_T_centered) / max(data_T.shape[0] - 1, 1)
+    sigma_T = sigma_T + 1e-6 * torch.eye(T, device=sigma_T.device, dtype=sigma_T.dtype)
+    sigma_T = (sigma_T + sigma_T.T) / 2
+
+    # ---------- 计算 Σ_D: 通道维协方差 ----------
+    # 将数据重塑为 [N*T, D], 每行是一个时间步在某样本下的通道向量
+    data_D = data_proc.reshape(-1, D)
+    data_D_centered = data_D - data_D.mean(dim=0, keepdim=True)
+    sigma_D = (data_D_centered.T @ data_D_centered) / max(data_D.shape[0] - 1, 1)
+    sigma_D = sigma_D + 1e-6 * torch.eye(D, device=sigma_D.device, dtype=sigma_D.dtype)
+    sigma_D = (sigma_D + sigma_D.T) / 2
+
+    return sigma_T, sigma_D, initializer_T, initializer_D, data_proc
+
+
+def _kronecker_eigen_decomposition(sigma_T, sigma_D, rank_ratio_T, rank_ratio_D):
+    """
+    对 Σ_T 和 Σ_D 分别做对称特征分解, 取前 r_T 和 r_D 个特征向量.
+
+    理论保证:
+        若 Σ = Σ_T ⊗ Σ_D, 则投影矩阵 P = V_T ⊗ V_D 满足
+        P^T Σ P = Λ_T ⊗ Λ_D  (对角矩阵)
+
+    Args:
+        sigma_T: [T, T] 对称半正定协方差矩阵
+        sigma_D: [D, D] 对称半正定协方差矩阵
+        rank_ratio_T: T 维度保留比例 (0, 1]
+        rank_ratio_D: D 维度保留比例 (0, 1]
+
+    Returns:
+        V_T: [T, r_T] 特征向量矩阵 (列正交)
+        V_D: [D, r_D] 特征向量矩阵 (列正交)
+        lambda_T: [r_T] 特征值 (降序)
+        lambda_D: [r_D] 特征值 (降序)
+    """
+    T = sigma_T.shape[0]
+    D = sigma_D.shape[0]
+
+    # 特征分解 Σ_T  (eigh 返回升序特征值)
+    lambda_T_all, V_T_all = torch.linalg.eigh(sigma_T)
+    V_T_all = V_T_all.flip(-1)
+    lambda_T_all = lambda_T_all.flip(-1)
+
+    r_T = max(1, int(T * rank_ratio_T))
+    V_T = V_T_all[:, :r_T].contiguous()
+    lambda_T = torch.clamp(lambda_T_all[:r_T], min=1e-10)
+
+    # 特征分解 Σ_D
+    lambda_D_all, V_D_all = torch.linalg.eigh(sigma_D)
+    V_D_all = V_D_all.flip(-1)
+    lambda_D_all = lambda_D_all.flip(-1)
+
+    r_D = max(1, int(D * rank_ratio_D))
+    V_D = V_D_all[:, :r_D].contiguous()
+    lambda_D = torch.clamp(lambda_D_all[:r_D], min=1e-10)
+
+    return V_T, V_D, lambda_T, lambda_D
+
+
+def _flip_flop_kronecker(data_proc, n_iter_max=100, tol=1e-6):
+    """
+    Flip-Flop 迭代算法, 交替优化 Σ_T 和 Σ_D 以改进 Kronecker 近似.
+
+    给定数据 X ∈ ℝ^{N×T×D}, 求解:
+        min_{Σ_T, Σ_D}  || Cov(vec(X)) - Σ_T ⊗ Σ_D ||_F
+
+    算法步骤:
+        1. 初始化 V_D = I_D
+        2. 固定 V_D, 更新 Σ_T = (1/ND) Σ_n Σ_d (V_D^T x_{n,:,d})(V_D^T x_{n,:,d})^T
+        3. 固定 V_T (从 Σ_T 分解得到), 更新 Σ_D
+        4. 重复直到收敛
+
+    Args:
+        data_proc: [N, T, D] 已预处理的数据张量
+        n_iter_max: 最大迭代次数
+        tol: 收敛阈值
+
+    Returns:
+        sigma_T: [T, T] 优化后的协方差矩阵
+        sigma_D: [D, D] 优化后的协方差矩阵
+    """
+    N, T, D = data_proc.shape
+    # 中心化
+    data_centered = data_proc - data_proc.mean(dim=0, keepdim=True)
+
+    # 初始估计
+    # Σ_T: 将数据看作 [N*D, T]
+    X_T = data_centered.permute(0, 2, 1).reshape(-1, T)
+    sigma_T = (X_T.T @ X_T) / max(X_T.shape[0] - 1, 1)
+    sigma_T = (sigma_T + sigma_T.T) / 2 + 1e-6 * torch.eye(T, device=sigma_T.device)
+
+    # Σ_D: 将数据看作 [N*T, D]
+    X_D = data_centered.reshape(-1, D)
+    sigma_D = (X_D.T @ X_D) / max(X_D.shape[0] - 1, 1)
+    sigma_D = (sigma_D + sigma_D.T) / 2 + 1e-6 * torch.eye(D, device=sigma_D.device)
+
+    prev_obj = None
+    for iteration in range(n_iter_max):
+        # ---------- 固定 Σ_D, 更新 Σ_T ----------
+        # 用 Σ_D^{-1/2} 白化 D 维, 然后计算 T 维协方差
+        eigvals_D, eigvecs_D = torch.linalg.eigh(sigma_D)
+        eigvals_D = torch.clamp(eigvals_D, min=1e-10)
+        # Σ_D^{-1/2}
+        sigma_D_inv_sqrt = eigvecs_D @ torch.diag(1.0 / torch.sqrt(eigvals_D)) @ eigvecs_D.T
+
+        # 白化后数据: [N, T, D] x [D, D] -> [N, T, D], 再 reshape 为 [N*D, T]
+        data_whitened_D = torch.einsum('ntd,dk->ntk', data_centered, sigma_D_inv_sqrt)
+        X_T_w = data_whitened_D.permute(0, 2, 1).reshape(-1, T)
+        sigma_T_new = (X_T_w.T @ X_T_w) / max(X_T_w.shape[0] - 1, 1)
+        sigma_T_new = (sigma_T_new + sigma_T_new.T) / 2 + 1e-6 * torch.eye(T, device=sigma_T.device)
+        # 归一化使得 trace(Σ_T) = T
+        sigma_T = sigma_T_new * (T / (sigma_T_new.trace() + 1e-12))
+
+        # ---------- 固定 Σ_T, 更新 Σ_D ----------
+        eigvals_T, eigvecs_T = torch.linalg.eigh(sigma_T)
+        eigvals_T = torch.clamp(eigvals_T, min=1e-10)
+        sigma_T_inv_sqrt = eigvecs_T @ torch.diag(1.0 / torch.sqrt(eigvals_T)) @ eigvecs_T.T
+
+        data_whitened_T = torch.einsum('ntd,ts->nsd', data_centered, sigma_T_inv_sqrt)
+        X_D_w = data_whitened_T.reshape(-1, D)
+        sigma_D_new = (X_D_w.T @ X_D_w) / max(X_D_w.shape[0] - 1, 1)
+        sigma_D_new = (sigma_D_new + sigma_D_new.T) / 2 + 1e-6 * torch.eye(D, device=sigma_D.device)
+        sigma_D = sigma_D_new * (D / (sigma_D_new.trace() + 1e-12))
+
+        # ---------- 收敛检查 ----------
+        # 用特征值乘积的 Frobenius 范数作为代理目标
+        obj = (sigma_T.trace() * sigma_D.trace()).item()
+        if prev_obj is not None and abs(obj - prev_obj) / (abs(prev_obj) + 1e-12) < tol:
+            print(f"[KronPCA Flip-Flop] Converged at iteration {iteration + 1}")
+            break
+        prev_obj = obj
+
+    return sigma_T, sigma_D
+
+
 def _unfold(X, mode):
     """将张量 X 沿 mode 轴展开为矩阵 [size_mode, -1]"""
     return X.moveaxis(mode, 0).reshape(X.shape[mode], -1)
@@ -357,7 +543,8 @@ def _partial_tucker_torch(X, modes, ranks, n_iter_max=100, tol=1e-6,
     return core, factors
 
 
-def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=0):
+def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=0,
+                 pca_iter_max=0, pca_tol=1e-6):
     if speedup_sklearn in [0, 1]:
         from sklearn.decomposition import PCA
     elif speedup_sklearn == 2:
@@ -372,7 +559,7 @@ def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=
     elif pca_dim == "D":
         full_rank = D
 
-    if pca_dim != "Tucker":
+    if pca_dim not in ("Tucker", "KronPCA"):
         n_components = int(full_rank * rank_ratio)
 
     if pca_dim == "all":
@@ -508,6 +695,54 @@ def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=
             [_to_numpy(x) for x in initializer_D],
         ]
         weights = [_to_numpy(weights_T), _to_numpy(weights_D)]
+
+    elif pca_dim == "KronPCA":
+        # ===== Kronecker PCA =====
+        # 假设 Σ = Σ_T ⊗ Σ_D, 对两者分别做特征分解
+        # 投影矩阵 P = V_T ⊗ V_D 保证 P^T Σ P = Λ_T ⊗ Λ_D (对角阵)
+        if isinstance(rank_ratio, (int, float)):
+            rank_ratios = [rank_ratio] * 2
+        else:
+            rank_ratios = rank_ratio
+        assert len(rank_ratios) == 2, "KronPCA 需要 (rT, rD) 两个比例"
+
+        # 步骤 1: 估计 Kronecker 协方差
+        sigma_T, sigma_D, initializer_T, initializer_D, data_proc = \
+            _estimate_kronecker_covariance(data, reinit)
+
+        # 步骤 2: (可选) Flip-Flop 迭代改进 Kronecker 近似
+        if pca_iter_max > 0:
+            sigma_T, sigma_D = _flip_flop_kronecker(
+                data_proc, n_iter_max=pca_iter_max, tol=pca_tol
+            )
+
+        # 步骤 3: 特征分解
+        V_T, V_D, lambda_T, lambda_D = _kronecker_eigen_decomposition(
+            sigma_T, sigma_D, rank_ratios[0], rank_ratios[1]
+        )
+
+        # base 格式: [V_T^T, V_D^T] 与 Tucker 保持一致
+        # V_T: [T, r_T] -> base_T: [r_T, T]
+        # V_D: [D, r_D] -> base_D: [r_D, D]
+        base_T = V_T.T.contiguous()
+        base_D = V_D.T.contiguous()
+
+        # 权重: 归一化特征值, 与 Tucker 格式一致
+        total_energy_T = lambda_T.sum() + 1e-12
+        total_energy_D = lambda_D.sum() + 1e-12
+        weights_T = lambda_T / total_energy_T
+        weights_D = lambda_D / total_energy_D
+
+        base = [_to_numpy(base_T), _to_numpy(base_D)]
+        initializer = [
+            [_to_numpy(x) for x in initializer_T],
+            [_to_numpy(x) for x in initializer_D],
+        ]
+        weights = [_to_numpy(weights_T), _to_numpy(weights_D)]
+
+        print(f"[KronPCA] base_T shape: {base[0].shape}, base_D shape: {base[1].shape}")
+        print(f"[KronPCA] Explained variance ratio T (top-5): {weights[0][:5]}")
+        print(f"[KronPCA] Explained variance ratio D (top-5): {weights[1][:5]}")
 
     else:
         raise NotImplementedError
@@ -1054,6 +1289,30 @@ def pca_torch(data, pca_dim, pca_cache, use_weights=0, reinit=True, chan_indep=0
 
         component_T, component_D = pca_cache.components
         low_rank_data = torch.einsum('btd,rt,sd->brs', data, component_T, component_D)
+        if use_weights:
+            weight_T, weight_D = pca_cache.weights
+            if use_weights == 2:
+                weight_T = torch.sqrt(weight_T)
+                weight_D = torch.sqrt(weight_D)
+            elif use_weights == 3:
+                weight_T = torch.pow(weight_T, 2)
+                weight_D = torch.pow(weight_D, 2)
+            low_rank_data = low_rank_data * weight_T[None, :, None] * weight_D[None, None, :]
+        return low_rank_data
+
+    if pca_dim == "KronPCA":
+        # KronPCA 前向投影:
+        # Z = X ×_T V_T^T ×_D V_D^T  =>  Z_{b,r,s} = Σ_{t,d} X_{b,t,d} * V_T_{t,r} * V_D_{d,s}
+        # 由于 base 存储为 [r_T, T] 和 [r_D, D] (转置形式), 需要转回 [T, r_T] 和 [D, r_D]
+        if reinit:
+            (mean_T, std_T), (mean_D, std_D) = pca_cache.initializer
+            data = (data - mean_T[None, :, None]) / std_T[None, :, None]
+            data = (data - mean_D[None, None, :]) / std_D[None, None, :]
+
+        component_T, component_D = pca_cache.components  # [r_T, T], [r_D, D]
+        # einsum: 'btd, rt, sd -> brs'  其中 component_T[r,t] = V_T[t,r]^T
+        low_rank_data = torch.einsum('btd,rt,sd->brs', data, component_T, component_D)
+
         if use_weights:
             weight_T, weight_D = pca_cache.weights
             if use_weights == 2:

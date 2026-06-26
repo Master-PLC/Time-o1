@@ -72,7 +72,7 @@ def _reduce_pca_projection(components, weights, rank_ratio, pca_dim):
         proj_dim = _pca_project_dim(weights.shape[-1], rank_ratio)
         components = components[:proj_dim]
         weights = weights[:proj_dim]
-    elif pca_dim == "Tucker":
+    elif pca_dim in ("Tucker", "KronPCA"):
         proj_dims = _pca_project_dims(weights, rank_ratio)
         components = [
             component[:proj_dim]
@@ -266,18 +266,21 @@ class Dataset_ETT_hour_Trend(Dataset_ETT_hour):
 class Dataset_ETT_hour_PCA(Dataset_ETT_hour):
     def __init__(
         self, root_path, flag='train', size=None, features='S', data_path='ETTh1.csv',
-        target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
-        add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., trend_k=0.02, rank_ratio=1.0, 
-        input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", reinit=0, speedup_sklearn=0, load_from_disk="", **kwargs
+        target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None,
+        add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023,
+        noise_type='sin', data_percentage=1., trend_k=0.02, rank_ratio=1.0,
+        input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", reinit=0, speedup_sklearn=0, load_from_disk="",
+        pca_iter_max=0, pca_tol=1e-6, **kwargs
     ):
         super().__init__(
-            root_path, flag, size, features, data_path, target, scale, timeenc, freq, seasonal_patterns, 
+            root_path, flag, size, features, data_path, target, scale, timeenc, freq, seasonal_patterns,
             add_noise, noise_amp, noise_freq_percentage, noise_seed, noise_type, data_percentage, **kwargs
         )
 
         self.speedup_sklearn = speedup_sklearn
         self.load_from_disk = load_from_disk
+        self.pca_iter_max = pca_iter_max
+        self.pca_tol = pca_tol
         self.pca_fit(rank_ratio, input_rank_ratio, input_pca_dim, pca_dim, reinit)
 
     def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", reinit=0):
@@ -315,9 +318,11 @@ class Dataset_ETT_hour_PCA(Dataset_ETT_hour):
             input_seq = np.array(input_seq)        # shape: [N, S, D]
             label_seq = np.array(label_seq)        # shape: [N, P, D]
             input_mark_seq = np.array(input_mark_seq)  # shape: [N, S, mark_dim]
-            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, input_pca_dim, True, self.speedup_sklearn)
-            self.input_mark_components, self.input_mark_initializer, self.input_mark_weights = get_pca_base(input_mark_seq, 1.0, input_pca_dim, True, self.speedup_sklearn)
-            self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, True, self.speedup_sklearn)
+            _iter_kw = dict(pca_iter_max=getattr(self, 'pca_iter_max', 0),
+                            pca_tol=getattr(self, 'pca_tol', 1e-6))
+            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, input_pca_dim, True, self.speedup_sklearn, **_iter_kw)
+            self.input_mark_components, self.input_mark_initializer, self.input_mark_weights = get_pca_base(input_mark_seq, 1.0, input_pca_dim, True, self.speedup_sklearn, **_iter_kw)
+            self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, True, self.speedup_sklearn, **_iter_kw)
             if self.load_from_disk:
                 os.makedirs(os.path.join(proj_dir, 'input', input_pca_dim, f"{self.seq_len}"), exist_ok=True)
                 _pca_cache_save(os.path.join(proj_dir, 'input', input_pca_dim, f"{self.seq_len}", 'pca_components.npy'), self.input_components)
@@ -514,18 +519,21 @@ class Dataset_ETT_minute_Fourier(Dataset_ETT_minute):
 class Dataset_ETT_minute_PCA(Dataset_ETT_minute):
     def __init__(
         self, root_path, flag='train', size=None, features='S', data_path='ETTh1.csv',
-        target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
-        add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., trend_k=0.02, rank_ratio=1.0, 
-        input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", reinit=0, speedup_sklearn=0, load_from_disk="", **kwargs
+        target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None,
+        add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023,
+        noise_type='sin', data_percentage=1., trend_k=0.02, rank_ratio=1.0,
+        input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", reinit=0, speedup_sklearn=0, load_from_disk="",
+        pca_iter_max=0, pca_tol=1e-6, **kwargs
     ):
         super().__init__(
-            root_path, flag, size, features, data_path, target, scale, timeenc, freq, seasonal_patterns, 
+            root_path, flag, size, features, data_path, target, scale, timeenc, freq, seasonal_patterns,
             add_noise, noise_amp, noise_freq_percentage, noise_seed, noise_type, data_percentage, **kwargs
         )
 
         self.speedup_sklearn = speedup_sklearn
         self.load_from_disk = load_from_disk
+        self.pca_iter_max = pca_iter_max
+        self.pca_tol = pca_tol
         self.pca_fit(rank_ratio, input_rank_ratio, input_pca_dim, pca_dim, reinit)
 
     def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", reinit=0):
@@ -563,9 +571,11 @@ class Dataset_ETT_minute_PCA(Dataset_ETT_minute):
             input_seq = np.array(input_seq)        # shape: [N, S, D]
             label_seq = np.array(label_seq)        # shape: [N, P, D]
             input_mark_seq = np.array(input_mark_seq)  # shape: [N, S, mark_dim]
-            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, input_pca_dim, True, self.speedup_sklearn)
-            self.input_mark_components, self.input_mark_initializer, self.input_mark_weights = get_pca_base(input_mark_seq, 1.0, input_pca_dim, True, self.speedup_sklearn)
-            self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, True, self.speedup_sklearn)
+            _iter_kw = dict(pca_iter_max=getattr(self, 'pca_iter_max', 0),
+                            pca_tol=getattr(self, 'pca_tol', 1e-6))
+            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, input_pca_dim, True, self.speedup_sklearn, **_iter_kw)
+            self.input_mark_components, self.input_mark_initializer, self.input_mark_weights = get_pca_base(input_mark_seq, 1.0, input_pca_dim, True, self.speedup_sklearn, **_iter_kw)
+            self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, True, self.speedup_sklearn, **_iter_kw)
             if self.load_from_disk:
                 os.makedirs(os.path.join(proj_dir, 'input', input_pca_dim, f"{self.seq_len}"), exist_ok=True)
                 _pca_cache_save(os.path.join(proj_dir, 'input', input_pca_dim, f"{self.seq_len}", 'pca_components.npy'), self.input_components)
@@ -806,18 +816,21 @@ class Dataset_Custom_Fourier(Dataset_Custom):
 class Dataset_Custom_PCA(Dataset_Custom):
     def __init__(
         self, root_path, flag='train', size=None, features='S', data_path='electricity.csv',
-        target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
-        add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", 
-        reinit=0, speedup_sklearn=0, load_from_disk="", **kwargs
+        target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None,
+        add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023,
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all",
+        reinit=0, speedup_sklearn=0, load_from_disk="",
+        pca_iter_max=0, pca_tol=1e-6, **kwargs
     ):
         super().__init__(
-            root_path, flag, size, features, data_path, target, scale, timeenc, freq, seasonal_patterns, 
+            root_path, flag, size, features, data_path, target, scale, timeenc, freq, seasonal_patterns,
             add_noise, noise_amp, noise_freq_percentage, noise_seed, noise_type, data_percentage, **kwargs
         )
 
         self.speedup_sklearn = speedup_sklearn
         self.load_from_disk = load_from_disk
+        self.pca_iter_max = pca_iter_max
+        self.pca_tol = pca_tol
         self.pca_fit(rank_ratio, input_rank_ratio, input_pca_dim, pca_dim, reinit)
 
     def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", reinit=0):
@@ -855,9 +868,11 @@ class Dataset_Custom_PCA(Dataset_Custom):
             input_seq = np.array(input_seq)        # shape: [N, S, D]
             label_seq = np.array(label_seq)        # shape: [N, P, D]
             input_mark_seq = np.array(input_mark_seq)  # shape: [N, S, mark_dim]
-            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, input_pca_dim, True, self.speedup_sklearn)
-            self.input_mark_components, self.input_mark_initializer, self.input_mark_weights = get_pca_base(input_mark_seq, 1.0, input_pca_dim, True, self.speedup_sklearn)
-            self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, True, self.speedup_sklearn)
+            _iter_kw = dict(pca_iter_max=getattr(self, 'pca_iter_max', 0),
+                            pca_tol=getattr(self, 'pca_tol', 1e-6))
+            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, input_pca_dim, True, self.speedup_sklearn, **_iter_kw)
+            self.input_mark_components, self.input_mark_initializer, self.input_mark_weights = get_pca_base(input_mark_seq, 1.0, input_pca_dim, True, self.speedup_sklearn, **_iter_kw)
+            self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, True, self.speedup_sklearn, **_iter_kw)
             if self.load_from_disk:
                 os.makedirs(os.path.join(proj_dir, 'input', input_pca_dim, f"{self.seq_len}"), exist_ok=True)
                 _pca_cache_save(os.path.join(proj_dir, 'input', input_pca_dim, f"{self.seq_len}", 'pca_components.npy'), self.input_components)
@@ -1306,10 +1321,11 @@ class Dataset_PEMS(Dataset):
 class Dataset_PEMS_PCA(Dataset_PEMS):
     def __init__(
         self, root_path, flag='train', size=None, features='S', data_path='ETTh1.csv',
-        target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None, 
-        add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", 
-        reinit=0, speedup_sklearn=0, load_from_disk="", **kwargs
+        target='OT', scale=True, timeenc=0, freq='h', seasonal_patterns=None,
+        add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023,
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all",
+        reinit=0, speedup_sklearn=0, load_from_disk="",
+        pca_iter_max=0, pca_tol=1e-6, **kwargs
     ):
         super().__init__(
             root_path, flag, size, features, data_path, target, scale, timeenc, freq, **kwargs
@@ -1317,6 +1333,8 @@ class Dataset_PEMS_PCA(Dataset_PEMS):
 
         self.speedup_sklearn = speedup_sklearn
         self.load_from_disk = load_from_disk
+        self.pca_iter_max = pca_iter_max
+        self.pca_tol = pca_tol
         self.pca_fit(rank_ratio, input_rank_ratio, input_pca_dim, pca_dim, reinit)
 
     def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", reinit=0):
@@ -1347,8 +1365,10 @@ class Dataset_PEMS_PCA(Dataset_PEMS):
                 label_seq.append(label)
             input_seq = np.array(input_seq)        # shape: [N, S, D]
             label_seq = np.array(label_seq)        # shape: [N, P, D]
-            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, input_pca_dim, True, self.speedup_sklearn)
-            self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, True, self.speedup_sklearn)
+            _iter_kw = dict(pca_iter_max=getattr(self, 'pca_iter_max', 0),
+                            pca_tol=getattr(self, 'pca_tol', 1e-6))
+            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, input_pca_dim, True, self.speedup_sklearn, **_iter_kw)
+            self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, True, self.speedup_sklearn, **_iter_kw)
             if self.load_from_disk:
                 os.makedirs(os.path.join(proj_dir, 'input', input_pca_dim, f"{self.seq_len}"), exist_ok=True)
                 _pca_cache_save(os.path.join(proj_dir, 'input', input_pca_dim, f"{self.seq_len}", 'pca_components.npy'), self.input_components)
@@ -1578,10 +1598,11 @@ class Dataset_M4(Dataset):
 class Dataset_M4_PCA(Dataset_M4):
     def __init__(
         self, root_path, flag='pred', size=None, features='S', data_path='ETTh1.csv',
-        target='OT', scale=True, inverse=False, timeenc=0, freq='15min', seasonal_patterns='Yearly', 
-        add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023, 
-        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", 
-        reinit=0, speedup_sklearn=0, load_from_disk="", **kwargs
+        target='OT', scale=True, inverse=False, timeenc=0, freq='15min', seasonal_patterns='Yearly',
+        add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023,
+        noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all",
+        reinit=0, speedup_sklearn=0, load_from_disk="",
+        pca_iter_max=0, pca_tol=1e-6, **kwargs
     ):
         super().__init__(
             root_path, flag, size, features, data_path, target, scale, inverse,
@@ -1592,6 +1613,8 @@ class Dataset_M4_PCA(Dataset_M4):
 
         self.speedup_sklearn = speedup_sklearn
         self.load_from_disk = load_from_disk
+        self.pca_iter_max = pca_iter_max
+        self.pca_tol = pca_tol
         self.pca_fit(rank_ratio, input_rank_ratio, input_pca_dim, pca_dim, reinit)
 
     def pca_fit(self, rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", reinit=0):
@@ -1622,8 +1645,10 @@ class Dataset_M4_PCA(Dataset_M4):
                 label_seq.append(label)
             input_seq = np.array(input_seq)        # shape: [N, S, D]
             label_seq = np.array(label_seq)        # shape: [N, P, D]
-            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, input_pca_dim, True, self.speedup_sklearn)
-            self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, True, self.speedup_sklearn)
+            _iter_kw = dict(pca_iter_max=getattr(self, 'pca_iter_max', 0),
+                            pca_tol=getattr(self, 'pca_tol', 1e-6))
+            self.input_components, self.input_initializer, self.input_weights = get_pca_base(input_seq, 1.0, input_pca_dim, True, self.speedup_sklearn, **_iter_kw)
+            self.pca_components, self.initializer, self.weights = get_pca_base(label_seq, 1.0, pca_dim, True, self.speedup_sklearn, **_iter_kw)
             if self.load_from_disk:
                 os.makedirs(os.path.join(proj_dir, 'input', input_pca_dim, f"{self.seq_len}"), exist_ok=True)
                 _pca_cache_save(os.path.join(proj_dir, 'input', input_pca_dim, f"{self.seq_len}", 'pca_components.npy'), self.input_components)

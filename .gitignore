@@ -202,3 +202,4 @@ pami_scripts/
 third_party/
 paper/
 .DS_Store
+.codewiz/

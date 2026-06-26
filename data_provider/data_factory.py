@@ -162,7 +162,9 @@ def data_provider(args, flag):
             num_freqs=args.num_freqs,
             speedup_sklearn=args.speedup_sklearn,
             align_type=args.align_type,
-            load_from_disk=args.load_from_disk
+            load_from_disk=args.load_from_disk,
+            pca_iter_max=getattr(args, 'pca_iter_max', 0),
+            pca_tol=getattr(args, 'pca_tol', 1e-6),
         )
         print(flag, len(data_set))
         data_loader = DataLoader(

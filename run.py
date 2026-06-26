@@ -155,6 +155,13 @@ if __name__ == '__main__':
     parser.add_argument('--input_use_weights', type=int, default=0, help="use input pca weights or not")
     parser.add_argument('--load_from_disk', type=str, default="")
 
+    # KronPCA
+    parser.add_argument('--pca_iter_max', type=int, default=0,
+                        help='Flip-Flop iteration count for KronPCA Kronecker covariance estimation. '
+                             '0 = use simple marginal estimation (no iteration)')
+    parser.add_argument('--pca_tol', type=float, default=1e-6,
+                        help='convergence tolerance for KronPCA Flip-Flop iteration')
+
     # CCA
     parser.add_argument('--align_type', type=int, default=0, help='alignment type; 0: mean')
 
