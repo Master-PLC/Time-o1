@@ -544,7 +544,7 @@ def _partial_tucker_torch(X, modes, ranks, n_iter_max=100, tol=1e-6,
 
 
 def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=0,
-                 pca_iter_max=0, pca_tol=1e-6):
+                 pca_iter_max=500, pca_tol=1e-6):
     if speedup_sklearn in [0, 1]:
         from sklearn.decomposition import PCA
     elif speedup_sklearn == 2:
@@ -657,7 +657,7 @@ def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=
         def _run_tucker(x, svd_impl="auto"):
             return _partial_tucker_torch(
                 x, modes=[1, 2], ranks=[n_components_T, n_components_D],
-                n_iter_max=500, tol=1e-6, svd_impl=svd_impl,
+                n_iter_max=pca_iter_max, tol=pca_tol, svd_impl=svd_impl,
             )
 
         if torch.cuda.is_available():

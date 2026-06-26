@@ -270,7 +270,7 @@ class Dataset_ETT_hour_PCA(Dataset_ETT_hour):
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023,
         noise_type='sin', data_percentage=1., trend_k=0.02, rank_ratio=1.0,
         input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", reinit=0, speedup_sklearn=0, load_from_disk="",
-        pca_iter_max=0, pca_tol=1e-6, **kwargs
+        pca_iter_max=500, pca_tol=1e-6, **kwargs
     ):
         super().__init__(
             root_path, flag, size, features, data_path, target, scale, timeenc, freq, seasonal_patterns,
@@ -523,7 +523,7 @@ class Dataset_ETT_minute_PCA(Dataset_ETT_minute):
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023,
         noise_type='sin', data_percentage=1., trend_k=0.02, rank_ratio=1.0,
         input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all", reinit=0, speedup_sklearn=0, load_from_disk="",
-        pca_iter_max=0, pca_tol=1e-6, **kwargs
+        pca_iter_max=500, pca_tol=1e-6, **kwargs
     ):
         super().__init__(
             root_path, flag, size, features, data_path, target, scale, timeenc, freq, seasonal_patterns,
@@ -820,7 +820,7 @@ class Dataset_Custom_PCA(Dataset_Custom):
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023,
         noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all",
         reinit=0, speedup_sklearn=0, load_from_disk="",
-        pca_iter_max=0, pca_tol=1e-6, **kwargs
+        pca_iter_max=500, pca_tol=1e-6, **kwargs
     ):
         super().__init__(
             root_path, flag, size, features, data_path, target, scale, timeenc, freq, seasonal_patterns,
@@ -1325,7 +1325,7 @@ class Dataset_PEMS_PCA(Dataset_PEMS):
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023,
         noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all",
         reinit=0, speedup_sklearn=0, load_from_disk="",
-        pca_iter_max=0, pca_tol=1e-6, **kwargs
+        pca_iter_max=500, pca_tol=1e-6, **kwargs
     ):
         super().__init__(
             root_path, flag, size, features, data_path, target, scale, timeenc, freq, **kwargs
@@ -1602,7 +1602,7 @@ class Dataset_M4_PCA(Dataset_M4):
         add_noise=False, noise_amp=0.1, noise_freq_percentage=0.05, noise_seed=2023,
         noise_type='sin', data_percentage=1., rank_ratio=1.0, input_rank_ratio=1.0, input_pca_dim="D", pca_dim="all",
         reinit=0, speedup_sklearn=0, load_from_disk="",
-        pca_iter_max=0, pca_tol=1e-6, **kwargs
+        pca_iter_max=500, pca_tol=1e-6, **kwargs
     ):
         super().__init__(
             root_path, flag, size, features, data_path, target, scale, inverse,

@@ -156,7 +156,7 @@ if __name__ == '__main__':
     parser.add_argument('--load_from_disk', type=str, default="")
 
     # KronPCA
-    parser.add_argument('--pca_iter_max', type=int, default=0,
+    parser.add_argument('--pca_iter_max', type=int, default=500,
                         help='Flip-Flop iteration count for KronPCA Kronecker covariance estimation. '
                              '0 = use simple marginal estimation (no iteration)')
     parser.add_argument('--pca_tol', type=float, default=1e-6,
