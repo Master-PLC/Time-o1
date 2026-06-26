@@ -740,10 +740,6 @@ def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=
         ]
         weights = [_to_numpy(weights_T), _to_numpy(weights_D)]
 
-        print(f"[KronPCA] base_T shape: {base[0].shape}, base_D shape: {base[1].shape}")
-        print(f"[KronPCA] Explained variance ratio T (top-5): {weights[0][:5]}")
-        print(f"[KronPCA] Explained variance ratio D (top-5): {weights[1][:5]}")
-
     else:
         raise NotImplementedError
 
