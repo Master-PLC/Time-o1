@@ -225,7 +225,7 @@ def run_benchmark(N=100, T=96, D=7, rank_ratio=0.5, repeats=3, seed=0, device='c
 
     返回一个 dict, key 是 pca_dim, value 是指标字典。
     """
-    pca_methods = ["all", "T", "D", "Tucker", "KronPCA"]
+    pca_methods = ["T", "D", "Tucker", "KronPCA"]
     results = OrderedDict()
 
     print("=" * 80)
@@ -644,8 +644,8 @@ class TestPCAMethods:
 def main():
     parser = argparse.ArgumentParser(description='PCA 方法基准测试')
     parser.add_argument('--N', type=int, default=10000, help='样本数')
-    parser.add_argument('--T', type=int, default=720, help='时间步长')
-    parser.add_argument('--D', type=int, default=864, help='通道数')
+    parser.add_argument('--T', type=int, default=96, help='时间步长')
+    parser.add_argument('--D', type=int, default=7, help='通道数')
     parser.add_argument('--rank_ratio', type=float, default=1.0, help='保留比例')
     parser.add_argument('--repeats', type=int, default=3, help='重复次数')
     parser.add_argument('--seed', type=int, default=2023, help='随机种子')
