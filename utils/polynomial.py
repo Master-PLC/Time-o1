@@ -287,7 +287,7 @@ def get_cca_projection(X, Y, rank_ratio=1.0, pca_dim="D", speedup_sklearn=0, ali
     return Wx, Wy, means, stds
 
 
-def _estimate_kronecker_covariance(data, reinit=0):
+def _estimate_kronecker_covariance(data, reinit=0, force_cpu=False):
     """
     估计 Kronecker 结构的协方差矩阵 Σ_T 和 Σ_D。
 
@@ -313,7 +313,7 @@ def _estimate_kronecker_covariance(data, reinit=0):
     else:
         data_proc = data.to(torch.float32).clone() if reinit else data.to(torch.float32)
 
-    if torch.cuda.is_available():
+    if not force_cpu and torch.cuda.is_available():
         data_proc = data_proc.cuda()
 
     # ---------- 标准化 ----------
@@ -706,20 +706,31 @@ def get_pca_base(data, rank_ratio=1.0, pca_dim="all", reinit=0, speedup_sklearn=
             rank_ratios = rank_ratio
         assert len(rank_ratios) == 2, "KronPCA 需要 (rT, rD) 两个比例"
 
-        # 步骤 1: 估计 Kronecker 协方差
-        sigma_T, sigma_D, initializer_T, initializer_D, data_proc = \
-            _estimate_kronecker_covariance(data, reinit)
-
-        # 步骤 2: (可选) Flip-Flop 迭代改进 Kronecker 近似
-        if pca_iter_max > 0:
-            sigma_T, sigma_D = _flip_flop_kronecker(
-                data_proc, n_iter_max=pca_iter_max, tol=pca_tol
+        # 步骤 1~3: 估计 Kronecker 协方差 -> Flip-Flop 迭代 -> 特征分解
+        def _run_kronpca(force_cpu=False):
+            sigma_T, sigma_D, init_T, init_D, data_proc = \
+                _estimate_kronecker_covariance(data, reinit, force_cpu=force_cpu)
+            if pca_iter_max > 0:
+                sigma_T, sigma_D = _flip_flop_kronecker(
+                    data_proc, n_iter_max=pca_iter_max, tol=pca_tol
+                )
+            V_T, V_D, lam_T, lam_D = _kronecker_eigen_decomposition(
+                sigma_T, sigma_D, rank_ratios[0], rank_ratios[1]
             )
+            return V_T, V_D, lam_T, lam_D, init_T, init_D
 
-        # 步骤 3: 特征分解
-        V_T, V_D, lambda_T, lambda_D = _kronecker_eigen_decomposition(
-            sigma_T, sigma_D, rank_ratios[0], rank_ratios[1]
-        )
+        try:
+            V_T, V_D, lambda_T, lambda_D, initializer_T, initializer_D = \
+                _run_kronpca(force_cpu=False)
+        except (getattr(torch, "OutOfMemoryError", RuntimeError),) as e:
+            if "out of memory" not in str(e).lower() and not isinstance(
+                e, getattr(torch, "OutOfMemoryError", tuple())
+            ):
+                raise
+            torch.cuda.empty_cache()
+            print("[KronPCA] CUDA OOM, falling back to CPU.")
+            V_T, V_D, lambda_T, lambda_D, initializer_T, initializer_D = \
+                _run_kronpca(force_cpu=True)
 
         # base 格式: [V_T^T, V_D^T] 与 Tucker 保持一致
         # V_T: [T, r_T] -> base_T: [r_T, T]
