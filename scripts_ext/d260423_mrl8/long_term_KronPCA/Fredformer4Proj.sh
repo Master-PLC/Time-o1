@@ -38,6 +38,7 @@ test_batch_size=1
 
 # datasets to run
 datasets=(ETTh1 ETTh2 ETTm1 ETTm2 ECL Weather Traffic PEMS03 PEMS08)
+datasets=(Weather PEMS03 PEMS08)
 
 
 
@@ -1066,6 +1067,7 @@ done
 dst=Weather
 
 pl_list=(96 192 336 720)
+pl_list=(720)
 lbd_list=(0.0)
 lr_list=(0.0005)
 rank_ratio_T_list=(1.0)
@@ -1236,6 +1238,7 @@ done
 dst=PEMS03
 
 pl_list=(36 48)
+pl_list=(12 24 48)
 lbd_list=(0.0)
 lr_list=(0.005)
 rank_ratio_T_list=(1.0)
@@ -1409,6 +1412,7 @@ done
 dst=PEMS08
 
 pl_list=(48)
+pl_list=(12 24 36)
 lbd_list=(0.0)
 lr_list=(0.005)
 rank_ratio_T_list=(1.0)

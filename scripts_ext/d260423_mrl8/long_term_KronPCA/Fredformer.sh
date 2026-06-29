@@ -25,7 +25,7 @@ job_number=0
 
 DATA_ROOT=$USRDIR/dataset
 OUT_ROOT=/mnt/tidalfs-bdsz01/dataset/llm_ckpt/plc_data/Time-o1
-EXP_NAME=long_term_Tucker
+EXP_NAME=long_term_KronPCA
 seed=2023
 des='Fredformer'
 
@@ -33,28 +33,61 @@ model_name=Fredformer
 
 auxi_mode=basis
 auxi_type=pca
-pca_dim=Tucker
+pca_dim=KronPCA
 test_batch_size=1
 
 # datasets to run
-datasets=(ETTh2)
+datasets=(ETTm1)
 
 
 
 # hyper-parameters
 dst=ETTh1
 
-pl_list=(96 192 336 720)
-lbd_list=(0.0 0.1 0.2 0.3)
-lr_list=(0.0005 0.001 0.002 0.005)
+# pl_list=(96 192 336 720)
+# lbd_list=(0.0 0.1 0.2 0.3)
+# lr_list=(0.0005 0.001 0.002 0.005)
+# rank_ratio_T_list=(1.0 0.9 0.8)
+# rank_ratio_D_list=(1.0 0.9 0.8)
+# reinit_list=(1)
+# auxi_loss_list=(MAE)
+# out_chan_indep_list=(1)
+# lradj_list=(type3 type1)
+# bs_list=(128)
+# use_weights_list=(0)
+# pca_iter_max_list=(500)
+# pca_tol_list=(1e-6)
+
+
+
+# pl_list=(96 192 336 720)
+# lbd_list=(0.0 0.1)
+# lr_list=(0.001 0.002 0.005)
+# rank_ratio_T_list=(1.0 0.9)
+# rank_ratio_D_list=(1.0 0.9)
+# reinit_list=(0)
+# auxi_loss_list=(MAE)
+# out_chan_indep_list=(1)
+# lradj_list=(type3 type1)
+# bs_list=(128)
+# use_weights_list=(0)
+# pca_iter_max_list=(500)
+# pca_tol_list=(1e-6)
+
+
+pl_list=(96 336)
+lbd_list=(0.0)
+lr_list=(0.001 0.002 0.005)
 rank_ratio_T_list=(1.0 0.9 0.8)
-rank_ratio_D_list=(1.0 0.9 0.8)
+rank_ratio_D_list=(1.0 0.8)
 reinit_list=(1)
 auxi_loss_list=(MAE)
 out_chan_indep_list=(1)
-lradj_list=(type3 type1)
+lradj_list=(type1)
 bs_list=(128)
 use_weights_list=(0)
+pca_iter_max_list=(500)
+pca_tol_list=(1e-6)
 
 
 lradj=type3
@@ -65,6 +98,8 @@ test_batch_size=1
 
 rerun=0
 
+for pca_iter_max in ${pca_iter_max_list[@]}; do
+for pca_tol in ${pca_tol_list[@]}; do
 for use_weights in ${use_weights_list[@]}; do
 for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
@@ -94,7 +129,7 @@ for pl in ${pl_list[@]}; do
 
     rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}_${pca_iter_max}_${pca_tol}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     mkdir -p "${PROJ_DIR}/"
@@ -179,11 +214,15 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --out_chan_indep ${out_chan_indep} \
+            --pca_iter_max ${pca_iter_max} \
+            --pca_tol ${pca_tol} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -204,29 +243,19 @@ done
 # hyper-parameters
 dst=ETTh2
 
-# pl_list=(96 192 336 720)
-# lbd_list=(0.0 0.1 0.2 0.4 0.6)
-# lr_list=(0.0005 0.001 0.002 0.005)
-# rank_ratio_T_list=(1.0 0.9 0.8 0.7 0.6)
-# rank_ratio_D_list=(1.0 0.9 0.8)
-# reinit_list=(1)
-# auxi_loss_list=(MAE)
-# out_chan_indep_list=(1)
-# lradj_list=(type3 type1)
-# bs_list=(128)
-# use_weights_list=(0)
-
-pl_list=(96 336)
-lbd_list=(0.0 0.1 0.2 0.3 0.8 0.9)
-lr_list=(0.003 0.004 0.002 0.005 0.01)
+pl_list=(96 192 336 720)
+lbd_list=(0.0 0.2 0.4 0.6)
+lr_list=(0.001 0.002 0.005)
 rank_ratio_T_list=(1.0 0.9 0.8)
 rank_ratio_D_list=(1.0 0.9 0.8)
-reinit_list=(1)
+reinit_list=(0)
 auxi_loss_list=(MAE)
 out_chan_indep_list=(1)
-lradj_list=(type3 type1 TST)
+lradj_list=(type3 type1)
 bs_list=(128)
 use_weights_list=(0)
+pca_iter_max_list=(500)
+pca_tol_list=(1e-6)
 
 
 lradj=type3
@@ -237,6 +266,8 @@ test_batch_size=1
 
 rerun=0
 
+for pca_iter_max in ${pca_iter_max_list[@]}; do
+for pca_tol in ${pca_tol_list[@]}; do
 for use_weights in ${use_weights_list[@]}; do
 for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
@@ -266,7 +297,7 @@ for pl in ${pl_list[@]}; do
 
     rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}_${pca_iter_max}_${pca_tol}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     mkdir -p "${PROJ_DIR}/"
@@ -354,11 +385,15 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --out_chan_indep ${out_chan_indep} \
+            --pca_iter_max ${pca_iter_max} \
+            --pca_tol ${pca_tol} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -378,17 +413,50 @@ done
 # hyper-parameters
 dst=ETTm1
 
-pl_list=(96 192 336 720)
-lbd_list=(0.1 0.2 0.3 0.4 0.5 0.6 0.8)
-lr_list=(0.0005 0.001 0.002 0.005)
-rank_ratio_T_list=(1.0 0.9)
-rank_ratio_D_list=(1.0 0.9)
+# pl_list=(96 192 336 720)
+# lbd_list=(0.0 0.2 0.4 0.6)
+# lr_list=(0.001 0.002 0.005)
+# rank_ratio_T_list=(1.0 0.9 0.8)
+# rank_ratio_D_list=(1.0 0.9 0.8)
+# reinit_list=(1)
+# auxi_loss_list=(MAE)
+# out_chan_indep_list=(1)
+# lradj_list=(TST type1)
+# bs_list=(128)
+# use_weights_list=(0)
+# pca_iter_max_list=(500)
+# pca_tol_list=(1e-6)
+
+
+# pl_list=(192 336 720)
+# lbd_list=(0.0 0.2 0.4 0.6 0.8)
+# lr_list=(0.0005 0.001 0.002 0.005)
+# rank_ratio_T_list=(1.0 0.9)
+# rank_ratio_D_list=(1.0 0.8 0.6)
+# reinit_list=(0 1)
+# auxi_loss_list=(MAE)
+# out_chan_indep_list=(1)
+# lradj_list=(type1)
+# bs_list=(128)
+# use_weights_list=(0)
+# pca_iter_max_list=(500)
+# pca_tol_list=(1e-6)
+
+
+pl_list=(192 336 720)
+lbd_list=(0.0 0.1)
+lr_list=(0.0005 0.001 0.0002 0.0001)
+rank_ratio_T_list=(1.0 0.9 0.8)
+rank_ratio_D_list=(1.0 0.8)
 reinit_list=(1)
 auxi_loss_list=(MAE)
 out_chan_indep_list=(1)
-lradj_list=(TST)
+lradj_list=(TST type3 type1)
 bs_list=(128)
 use_weights_list=(0)
+pca_iter_max_list=(500)
+pca_tol_list=(1e-6)
+
 
 lradj=TST
 train_epochs=100
@@ -398,6 +466,8 @@ test_batch_size=1
 
 rerun=0
 
+for pca_iter_max in ${pca_iter_max_list[@]}; do
+for pca_tol in ${pca_tol_list[@]}; do
 for use_weights in ${use_weights_list[@]}; do
 for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
@@ -427,7 +497,7 @@ for pl in ${pl_list[@]}; do
 
     rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}_${pca_iter_max}_${pca_tol}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     mkdir -p "${PROJ_DIR}/"
@@ -516,11 +586,15 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --out_chan_indep ${out_chan_indep} \
+            --pca_iter_max ${pca_iter_max} \
+            --pca_tol ${pca_tol} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -544,15 +618,17 @@ dst=ETTm2
 
 pl_list=(96 192 336 720)
 lbd_list=(0.0 0.2 0.4 0.6)
-lr_list=(0.0005 0.001 0.002 0.005)
+lr_list=(0.001 0.002 0.005)
 rank_ratio_T_list=(1.0 0.9 0.8)
 rank_ratio_D_list=(1.0 0.9 0.8)
 reinit_list=(1)
 auxi_loss_list=(MAE)
 out_chan_indep_list=(1)
-lradj_list=(TST)
+lradj_list=(TST type1)
 bs_list=(128)
 use_weights_list=(0)
+pca_iter_max_list=(500)
+pca_tol_list=(1e-6)
 
 lradj=TST
 train_epochs=100
@@ -562,6 +638,8 @@ test_batch_size=1
 
 rerun=0
 
+for pca_iter_max in ${pca_iter_max_list[@]}; do
+for pca_tol in ${pca_tol_list[@]}; do
 for use_weights in ${use_weights_list[@]}; do
 for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
@@ -591,7 +669,7 @@ for pl in ${pl_list[@]}; do
 
     rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}_${pca_iter_max}_${pca_tol}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     mkdir -p "${PROJ_DIR}/"
@@ -680,11 +758,15 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --out_chan_indep ${out_chan_indep} \
+            --pca_iter_max ${pca_iter_max} \
+            --pca_tol ${pca_tol} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -706,16 +788,18 @@ done
 dst=ECL
 
 pl_list=(96 192 336 720)
-lbd_list=(0.0 0.2 0.4)
-lr_list=(0.01 0.005)
-rank_ratio_T_list=(1.0 0.9 0.8)
-rank_ratio_D_list=(1.0 0.9 0.8)
+lbd_list=(0.0)
+lr_list=(0.005)
+rank_ratio_T_list=(1.0)
+rank_ratio_D_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-out_chan_indep_list=(0 1)
+out_chan_indep_list=(1)
 lradj_list=(type3)
 bs_list=(32)
 use_weights_list=(0)
+pca_iter_max_list=(500)
+pca_tol_list=(1e-6)
 
 lradj=TST
 train_epochs=100
@@ -725,6 +809,8 @@ test_batch_size=1
 
 rerun=0
 
+for pca_iter_max in ${pca_iter_max_list[@]}; do
+for pca_tol in ${pca_tol_list[@]}; do
 for use_weights in ${use_weights_list[@]}; do
 for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
@@ -754,7 +840,7 @@ for pl in ${pl_list[@]}; do
 
     rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}_${pca_iter_max}_${pca_tol}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     mkdir -p "${PROJ_DIR}/"
@@ -843,11 +929,15 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --out_chan_indep ${out_chan_indep} \
+            --pca_iter_max ${pca_iter_max} \
+            --pca_tol ${pca_tol} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -868,16 +958,18 @@ done
 dst=Traffic
 
 pl_list=(96 192 336 720)
-lbd_list=(0.0 0.2 0.4)
-lr_list=(0.01 0.005)
-rank_ratio_T_list=(1.0 0.9 0.8)
-rank_ratio_D_list=(1.0 0.9 0.8)
+lbd_list=(0.0)
+lr_list=(0.005)
+rank_ratio_T_list=(1.0)
+rank_ratio_D_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-out_chan_indep_list=(0 1)
+out_chan_indep_list=(1)
 lradj_list=(type3)
 bs_list=(32)
 use_weights_list=(0)
+pca_iter_max_list=(500)
+pca_tol_list=(1e-6)
 
 lradj=TST
 train_epochs=100
@@ -887,6 +979,8 @@ test_batch_size=1
 
 rerun=0
 
+for pca_iter_max in ${pca_iter_max_list[@]}; do
+for pca_tol in ${pca_tol_list[@]}; do
 for use_weights in ${use_weights_list[@]}; do
 for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
@@ -915,7 +1009,7 @@ for pl in ${pl_list[@]}; do
 
     rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}_${pca_iter_max}_${pca_tol}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     mkdir -p "${PROJ_DIR}/"
@@ -1004,11 +1098,15 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --out_chan_indep ${out_chan_indep} \
+            --pca_iter_max ${pca_iter_max} \
+            --pca_tol ${pca_tol} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -1030,16 +1128,18 @@ done
 dst=Weather
 
 pl_list=(96 192 336 720)
-lbd_list=(0.0 0.2 0.4)
-lr_list=(0.001 0.0005)
-rank_ratio_T_list=(1.0 0.9 0.8)
-rank_ratio_D_list=(1.0 0.9 0.8)
+lbd_list=(0.0)
+lr_list=(0.0005)
+rank_ratio_T_list=(1.0)
+rank_ratio_D_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-out_chan_indep_list=(0 1)
+out_chan_indep_list=(1)
 lradj_list=(type3)
 bs_list=(128)
 use_weights_list=(0)
+pca_iter_max_list=(500)
+pca_tol_list=(1e-6)
 
 lradj=type3
 train_epochs=100
@@ -1049,6 +1149,8 @@ test_batch_size=1
 
 rerun=0
 
+for pca_iter_max in ${pca_iter_max_list[@]}; do
+for pca_tol in ${pca_tol_list[@]}; do
 for use_weights in ${use_weights_list[@]}; do
 for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
@@ -1078,7 +1180,7 @@ for pl in ${pl_list[@]}; do
 
     rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}_${pca_iter_max}_${pca_tol}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     mkdir -p "${PROJ_DIR}/"
@@ -1165,11 +1267,15 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --out_chan_indep ${out_chan_indep} \
+            --pca_iter_max ${pca_iter_max} \
+            --pca_tol ${pca_tol} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -1192,16 +1298,18 @@ done
 dst=PEMS03
 
 pl_list=(12 24 36 48)
-lbd_list=(0.0 0.2 0.4)
-lr_list=(0.01 0.005)
-rank_ratio_T_list=(1.0 0.9 0.8)
-rank_ratio_D_list=(1.0 0.9 0.8)
+lbd_list=(0.0)
+lr_list=(0.005)
+rank_ratio_T_list=(1.0)
+rank_ratio_D_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-out_chan_indep_list=(0 1)
+out_chan_indep_list=(1)
 lradj_list=(type3)
 bs_list=(32)
 use_weights_list=(0)
+pca_iter_max_list=(500)
+pca_tol_list=(1e-6)
 
 lradj=TST
 train_epochs=100
@@ -1211,6 +1319,8 @@ test_batch_size=1
 
 rerun=0
 
+for pca_iter_max in ${pca_iter_max_list[@]}; do
+for pca_tol in ${pca_tol_list[@]}; do
 for use_weights in ${use_weights_list[@]}; do
 for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
@@ -1240,7 +1350,7 @@ for pl in ${pl_list[@]}; do
 
     rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}_${pca_iter_max}_${pca_tol}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     mkdir -p "${PROJ_DIR}/"
@@ -1329,11 +1439,15 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --out_chan_indep ${out_chan_indep} \
+            --pca_iter_max ${pca_iter_max} \
+            --pca_tol ${pca_tol} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done
@@ -1357,16 +1471,18 @@ done
 dst=PEMS08
 
 pl_list=(12 24 36 48)
-lbd_list=(0.0 0.2 0.4)
-lr_list=(0.01 0.005)
-rank_ratio_T_list=(1.0 0.9 0.8)
-rank_ratio_D_list=(1.0 0.9 0.8)
+lbd_list=(0.0)
+lr_list=(0.005)
+rank_ratio_T_list=(1.0)
+rank_ratio_D_list=(1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-out_chan_indep_list=(0 1)
+out_chan_indep_list=(1)
 lradj_list=(type3)
 bs_list=(32)
 use_weights_list=(0)
+pca_iter_max_list=(500)
+pca_tol_list=(1e-6)
 
 lradj=TST
 train_epochs=100
@@ -1376,6 +1492,8 @@ test_batch_size=1
 
 rerun=0
 
+for pca_iter_max in ${pca_iter_max_list[@]}; do
+for pca_tol in ${pca_tol_list[@]}; do
 for use_weights in ${use_weights_list[@]}; do
 for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
@@ -1405,7 +1523,7 @@ for pl in ${pl_list[@]}; do
 
     rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${cf_dim}_${cf_depth}_${cf_heads}_${cf_mlp}_${cf_head_dim}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${out_chan_indep}_${pca_iter_max}_${pca_tol}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
     mkdir -p "${PROJ_DIR}/"
@@ -1494,11 +1612,15 @@ for pl in ${pl_list[@]}; do
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
             --out_chan_indep ${out_chan_indep} \
+            --pca_iter_max ${pca_iter_max} \
+            --pca_tol ${pca_tol} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
 done
 done
 done

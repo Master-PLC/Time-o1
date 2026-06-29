@@ -25,17 +25,15 @@ job_number=0
 
 DATA_ROOT=$USRDIR/dataset
 OUT_ROOT=/mnt/tidalfs-bdsz01/dataset/llm_ckpt/plc_data/Time-o1
-EXP_NAME=long_term
+EXP_NAME=long_term_KronPCA
 seed=2023
 des='MICN'
 
 model_name=MICN
 
-input_use_weights=0
 auxi_mode=basis
 auxi_type=pca
-pca_dim=T
-use_weights=0
+pca_dim=KronPCA
 test_batch_size=1
 
 # datasets to run
@@ -46,11 +44,9 @@ datasets=(PEMS03)
 
 # hyper-parameters
 dst=ETTh1
+
 pl_list=(96 192 336 720)
-extra_rev_in_list=(0 1)
-chan_indep_list_meta=(1)
 out_chan_indep_list=(0 1)
-input_trans_list=(same)
 
 lambda=1.0
 
@@ -62,20 +58,8 @@ batch_size=32
 
 rerun=0
 
-for input_trans_item in ${input_trans_list[@]}; do
-case $input_trans_item in
-    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
-    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
-    *) chan_indep_list=(0) input_trans=$input_trans_item;;
-esac
-for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+
 for out_chan_indep in ${out_chan_indep_list[@]}; do
-for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -84,12 +68,12 @@ for pl in ${pl_list[@]}; do
     rl=$lambda
     ax=$(echo "1 - $lambda" | bc)
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
-    ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
+    rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
+
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
-    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -119,7 +103,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast_trans \
+            --task_name long_term_forecast \
             --is_training 1 \
             --root_path $DATA_ROOT/ETT-small/ \
             --data_path ETTh1.csv \
@@ -155,19 +139,12 @@ for pl in ${pl_list[@]}; do
             --log_path $LOG_PATH \
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
-            --input_trans ${input_trans} \
-            --input_trans_path ${input_trans_path} \
-            --chan_indep ${chan_indep} \
-            --extra_rev_in ${extra_rev_in} \
             --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
-done
-done
-done
 done
 done
 
@@ -178,10 +155,7 @@ done
 # hyper-parameters
 dst=ETTh2
 pl_list=(96 192 336 720)
-extra_rev_in_list=(0 1)
-chan_indep_list_meta=(1)
 out_chan_indep_list=(0 1)
-input_trans_list=(same)
 
 lambda=1.0
 
@@ -193,20 +167,8 @@ batch_size=32
 
 rerun=0
 
-for input_trans_item in ${input_trans_list[@]}; do
-case $input_trans_item in
-    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
-    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
-    *) chan_indep_list=(0) input_trans=$input_trans_item;;
-esac
-for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+
 for out_chan_indep in ${out_chan_indep_list[@]}; do
-for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -215,12 +177,12 @@ for pl in ${pl_list[@]}; do
     rl=$lambda
     ax=$(echo "1 - $lambda" | bc)
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
-    ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
+    rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
+
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
-    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -250,7 +212,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast_trans \
+            --task_name long_term_forecast \
             --is_training 1 \
             --root_path $DATA_ROOT/ETT-small/ \
             --data_path ETTh2.csv \
@@ -286,19 +248,12 @@ for pl in ${pl_list[@]}; do
             --log_path $LOG_PATH \
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
-            --input_trans ${input_trans} \
-            --input_trans_path ${input_trans_path} \
-            --chan_indep ${chan_indep} \
-            --extra_rev_in ${extra_rev_in} \
             --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
-done
-done
-done
 done
 done
 
@@ -317,10 +272,7 @@ lr_list=(0.001 0.0005 0.0001)
 rank_ratio_list=(0.2 0.6 1.0)
 reinit_list=(1)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(0 1)
-chan_indep_list_meta=(1)
 out_chan_indep_list=(0 1)
-input_trans_list=(same)
 
 lradj=type1
 train_epochs=10
@@ -330,20 +282,7 @@ batch_size=32
 rerun=0
 
 for auxi_loss in ${auxi_loss_list[@]}; do
-for input_trans_item in ${input_trans_list[@]}; do
-case $input_trans_item in
-    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
-    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
-    *) chan_indep_list=(0) input_trans=$input_trans_item;;
-esac
-for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
 for out_chan_indep in ${out_chan_indep_list[@]}; do
-for extra_rev_in in ${extra_rev_in_list[@]}; do
 for reinit in ${reinit_list[@]}; do
 for rank_ratio in ${rank_ratio_list[@]}; do
 for lr in ${lr_list[@]}; do
@@ -356,12 +295,12 @@ for pl in ${pl_list[@]}; do
     rl=$lambda
     ax=$(echo "1 - $lambda" | bc)
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
-    ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}
+    rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
+
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${out_chan_indep}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
-    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -391,7 +330,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast_trans \
+            --task_name long_term_forecast \
             --is_training 1 \
             --root_path $DATA_ROOT/ETT-small/ \
             --data_path ETTm1.csv \
@@ -434,18 +373,12 @@ for pl in ${pl_list[@]}; do
             --log_path $LOG_PATH \
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
-            --input_trans ${input_trans} \
-            --input_trans_path ${input_trans_path} \
-            --chan_indep ${chan_indep} \
-            --extra_rev_in ${extra_rev_in} \
             --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
-done
-done
 done
 done
 done
@@ -462,11 +395,9 @@ done
 
 # hyper-parameters
 dst=ETTm2
+
 pl_list=(96 192 336 720)
-extra_rev_in_list=(0 1)
-chan_indep_list_meta=(1)
 out_chan_indep_list=(0 1)
-input_trans_list=(same)
 
 lambda=1.0
 
@@ -478,20 +409,8 @@ batch_size=32
 
 rerun=0
 
-for input_trans_item in ${input_trans_list[@]}; do
-case $input_trans_item in
-    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
-    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
-    *) chan_indep_list=(0) input_trans=$input_trans_item;;
-esac
-for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+
 for out_chan_indep in ${out_chan_indep_list[@]}; do
-for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -500,12 +419,12 @@ for pl in ${pl_list[@]}; do
     rl=$lambda
     ax=$(echo "1 - $lambda" | bc)
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
-    ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
+    rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
+
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
-    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -535,7 +454,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast_trans \
+            --task_name long_term_forecast \
             --is_training 1 \
             --root_path $DATA_ROOT/ETT-small/ \
             --data_path ETTm2.csv \
@@ -571,19 +490,12 @@ for pl in ${pl_list[@]}; do
             --log_path $LOG_PATH \
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
-            --input_trans ${input_trans} \
-            --input_trans_path ${input_trans_path} \
-            --chan_indep ${chan_indep} \
-            --extra_rev_in ${extra_rev_in} \
             --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
-done
-done
-done
 done
 done
 
@@ -595,10 +507,7 @@ done
 # hyper-parameters
 dst=ECL
 pl_list=(96 192 336 720)
-extra_rev_in_list=(0 1)
-chan_indep_list_meta=(1)
 out_chan_indep_list=(0 1)
-input_trans_list=(same)
 
 lambda=1.0
 
@@ -610,20 +519,8 @@ batch_size=16
 
 rerun=0
 
-for input_trans_item in ${input_trans_list[@]}; do
-case $input_trans_item in
-    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
-    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
-    *) chan_indep_list=(0) input_trans=$input_trans_item;;
-esac
-for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+
 for out_chan_indep in ${out_chan_indep_list[@]}; do
-for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -632,12 +529,12 @@ for pl in ${pl_list[@]}; do
     rl=$lambda
     ax=$(echo "1 - $lambda" | bc)
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
-    ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
+    rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
+
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
-    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -667,7 +564,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast_trans \
+            --task_name long_term_forecast \
             --is_training 1 \
             --root_path $DATA_ROOT/electricity/ \
             --data_path electricity.csv \
@@ -705,19 +602,12 @@ for pl in ${pl_list[@]}; do
             --log_path $LOG_PATH \
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
-            --input_trans ${input_trans} \
-            --input_trans_path ${input_trans_path} \
-            --chan_indep ${chan_indep} \
-            --extra_rev_in ${extra_rev_in} \
             --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
-done
-done
-done
 done
 done
 
@@ -727,11 +617,9 @@ done
 
 # hyper-parameters
 dst=Traffic
+
 pl_list=(96 192 336 720)
-extra_rev_in_list=(0 1)
-chan_indep_list_meta=(1)
 out_chan_indep_list=(0 1)
-input_trans_list=(same)
 
 lambda=1.0
 
@@ -743,20 +631,8 @@ batch_size=8
 
 rerun=0
 
-for input_trans_item in ${input_trans_list[@]}; do
-case $input_trans_item in
-    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
-    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
-    *) chan_indep_list=(0) input_trans=$input_trans_item;;
-esac
-for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+
 for out_chan_indep in ${out_chan_indep_list[@]}; do
-for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -765,12 +641,12 @@ for pl in ${pl_list[@]}; do
     rl=$lambda
     ax=$(echo "1 - $lambda" | bc)
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
-    ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
+    rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
+
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
-    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -800,7 +676,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast_trans \
+            --task_name long_term_forecast \
             --is_training 1 \
             --root_path $DATA_ROOT/traffic/ \
             --data_path traffic.csv \
@@ -838,19 +714,12 @@ for pl in ${pl_list[@]}; do
             --log_path $LOG_PATH \
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
-            --input_trans ${input_trans} \
-            --input_trans_path ${input_trans_path} \
-            --chan_indep ${chan_indep} \
-            --extra_rev_in ${extra_rev_in} \
             --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
-done
-done
-done
 done
 done
 
@@ -861,11 +730,9 @@ done
 
 # hyper-parameters
 dst=Weather
+
 pl_list=(96 192 336 720)
-extra_rev_in_list=(0 1)
-chan_indep_list_meta=(1)
 out_chan_indep_list=(0 1)
-input_trans_list=(same)
 
 lambda=1.0
 
@@ -877,20 +744,8 @@ batch_size=32
 
 rerun=0
 
-for input_trans_item in ${input_trans_list[@]}; do
-case $input_trans_item in
-    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
-    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
-    *) chan_indep_list=(0) input_trans=$input_trans_item;;
-esac
-for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+
 for out_chan_indep in ${out_chan_indep_list[@]}; do
-for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -899,12 +754,12 @@ for pl in ${pl_list[@]}; do
     rl=$lambda
     ax=$(echo "1 - $lambda" | bc)
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
-    ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
+    rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
+
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
-    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -934,7 +789,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast_trans \
+            --task_name long_term_forecast \
             --is_training 1 \
             --root_path $DATA_ROOT/weather/ \
             --data_path weather.csv \
@@ -972,19 +827,12 @@ for pl in ${pl_list[@]}; do
             --log_path $LOG_PATH \
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
-            --input_trans ${input_trans} \
-            --input_trans_path ${input_trans_path} \
-            --chan_indep ${chan_indep} \
-            --extra_rev_in ${extra_rev_in} \
             --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
-done
-done
-done
 done
 done
 
@@ -997,17 +845,18 @@ done
 dst=PEMS03
 
 pl_list=(12 24 36 48)
-lbd_list=(0.0 0.1)
-lr_list=(0.001 0.0005)
-rank_ratio_list=(0.9 1.0)
-input_reinit_list=(0 1)
-input_rank_ratio_list=(0.4 0.6 0.8 1.0)
-reinit_list=(1)
+lbd_list=(0.0 0.2 0.4)
+lr_list=(0.0005 0.001 0.002)
+rank_ratio_T_list=(1.0 0.8 0.6 0.2)
+rank_ratio_D_list=(1.0 0.9 0.8)
+reinit_list=(0)
 auxi_loss_list=(MAE)
-extra_rev_in_list=(0 1)
-chan_indep_list_meta=(1)
-out_chan_indep_list=(0 1)
-input_trans_list=(same)
+out_chan_indep_list=(1)
+lradj_list=(type1 type3)
+bs_list=(32)
+use_weights_list=(0)
+pca_iter_max_list=(500)
+pca_tol_list=(1e-6)
 
 lradj=type1
 train_epochs=10
@@ -1016,22 +865,18 @@ batch_size=32
 
 rerun=0
 
+for pca_iter_max in ${pca_iter_max_list[@]}; do
+for pca_tol in ${pca_tol_list[@]}; do
+for use_weights in ${use_weights_list[@]}; do
+for batch_size in ${bs_list[@]}; do
 for auxi_loss in ${auxi_loss_list[@]}; do
-for input_trans_item in ${input_trans_list[@]}; do
-case $input_trans_item in
-    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
-    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
-    *) chan_indep_list=(0) input_trans=$input_trans_item;;
-esac
-for chan_indep in ${chan_indep_list[@]}; do
-for input_reinit in ${input_reinit_list[@]}; do
 for out_chan_indep in ${out_chan_indep_list[@]}; do
-for extra_rev_in in ${extra_rev_in_list[@]}; do
-for rank_ratio in ${rank_ratio_list[@]}; do
+for rank_ratio_T in ${rank_ratio_T_list[@]}; do
+for rank_ratio_D in ${rank_ratio_D_list[@]}; do
 for reinit in ${reinit_list[@]}; do
-for input_rank_ratio in ${input_rank_ratio_list[@]}; do
 for lr in ${lr_list[@]}; do
 for lambda in ${lbd_list[@]}; do
+for lradj in ${lradj_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -1040,12 +885,12 @@ for pl in ${pl_list[@]}; do
     rl=$lambda
     ax=$(echo "1 - $lambda" | bc)
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
-    ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${input_reinit}_${input_rank_ratio}_${auxi_mode}_${auxi_type}_${input_use_weights}
+    rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
+
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${out_chan_indep}_${auxi_loss}_${use_weights}_${reinit}_${pca_dim}_${rank_ratio}_${auxi_mode}_${auxi_type}_${pca_iter_max}_${pca_tol}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
-    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -1075,7 +920,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast_trans \
+            --task_name long_term_forecast \
             --is_training 1 \
             --root_path $DATA_ROOT/PEMS/ \
             --data_path PEMS03.npz \
@@ -1120,19 +965,16 @@ for pl in ${pl_list[@]}; do
             --log_path $LOG_PATH \
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
-            --input_reinit ${input_reinit} \
-            --input_rank_ratio ${input_rank_ratio} \
-            --input_trans ${input_trans} \
-            --input_trans_path ${input_trans_path} \
-            --input_use_weights ${input_use_weights} \
-            --chan_indep ${chan_indep} \
-            --extra_rev_in ${extra_rev_in} \
             --out_chan_indep ${out_chan_indep} \
-            --speedup_sklearn 2
+            --pca_iter_max ${pca_iter_max} \
+            --pca_tol ${pca_tol} \
+            --speedup_sklearn 2 \
+            --deterministic 1
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
 done
 done
 done
@@ -1155,11 +997,9 @@ done
 
 # hyper-parameters
 dst=PEMS08
+
 pl_list=(12 24 36 48)
-extra_rev_in_list=(0 1)
-chan_indep_list_meta=(1)
 out_chan_indep_list=(0 1)
-input_trans_list=(same)
 
 lambda=1.0
 
@@ -1171,20 +1011,8 @@ batch_size=32
 
 rerun=0
 
-for input_trans_item in ${input_trans_list[@]}; do
-case $input_trans_item in
-    evd) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$input_trans_item;;
-    same) chan_indep_list=("${chan_indep_list_meta[@]}") input_trans=$auxi_type;;
-    *) chan_indep_list=(0) input_trans=$input_trans_item;;
-esac
-for chan_indep in ${chan_indep_list[@]}; do
-case $input_trans_item in
-    evd) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-    same) out_chan_indep_list=($chan_indep);;
-    *) out_chan_indep_list=("${out_chan_indep_list_meta[@]}");;
-esac
+
 for out_chan_indep in ${out_chan_indep_list[@]}; do
-for extra_rev_in in ${extra_rev_in_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -1193,12 +1021,12 @@ for pl in ${pl_list[@]}; do
     rl=$lambda
     ax=$(echo "1 - $lambda" | bc)
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
-    ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${input_trans}_${chan_indep}_${extra_rev_in}_${out_chan_indep}
+    rank_ratio="[${rank_ratio_T},${rank_ratio_D}]"
+
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${out_chan_indep}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
     PROJ_DIR="${OUT_ROOT}/projections/PCA/${dst}"
-    input_trans_path="${OUT_ROOT}/projections/EVD/${dst}/ci${chan_indep}"
     mkdir -p "${PROJ_DIR}/"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -1228,7 +1056,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast_trans \
+            --task_name long_term_forecast \
             --is_training 1 \
             --root_path $DATA_ROOT/PEMS/ \
             --data_path PEMS08.npz \
@@ -1266,19 +1094,12 @@ for pl in ${pl_list[@]}; do
             --log_path $LOG_PATH \
             --rerun $rerun \
             --load_from_disk ${PROJ_DIR} \
-            --input_trans ${input_trans} \
-            --input_trans_path ${input_trans_path} \
-            --chan_indep ${chan_indep} \
-            --extra_rev_in ${extra_rev_in} \
             --out_chan_indep ${out_chan_indep} \
             --speedup_sklearn 2
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
-done
-done
-done
 done
 done
 
