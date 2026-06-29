@@ -11,7 +11,6 @@ import warnings
 import yaml
 
 import numpy as np
-import torch.nn as nn
 
 from data_provider.m4 import M4Meta
 from exp.exp_basic import Exp_Basic
@@ -62,9 +61,8 @@ class Exp_Short_Term_Forecast(Exp_Basic):
 
     def train(self, setting):
         train_data, train_loader = self._get_data(flag='train')
-        if self.args.auxi_mode == 'basis':
-            if self.args.auxi_type == 'pca':
-                pca_cache = Basis_Cache(train_data.pca_components, train_data.initializer, weights=train_data.weights, device=self.device)
+        if self.args.auxi_mode == 'basis' and self.args.auxi_type == 'pca':
+            pca_cache = Basis_Cache(train_data.pca_components, train_data.initializer, weights=train_data.weights, device=self.device)
         vali_data, vali_loader = self._get_data(flag='val')
 
         path = os.path.join(self.args.checkpoints, setting)
@@ -320,7 +318,7 @@ class Exp_Short_Term_Forecast(Exp_Basic):
             line = ''
             for k, v in metrics.items():
                 line += f"{k}: {v}\n"
-            print(line)
+            print(f"\033[94m{line}\033[0m")
 
             yaml.safe_dump(metrics, open(os.path.join(summary_path, "metrics.yaml"), 'w'), default_flow_style=False, sort_keys=False)
 
