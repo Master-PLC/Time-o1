@@ -38,7 +38,7 @@ test_batch_size=1
 
 # datasets to run
 # datasets=(ECL Traffic PEMS08)
-datasets=(ECL Traffic)
+datasets=(Traffic)
 
 
 # hyper-parameters
@@ -831,11 +831,41 @@ dst=Traffic
 # pca_tol_list=(1e-6)
 
 
-pl_list=(96 192 336 720)
-lbd_list=(0.0 0.1 0.2 0.8)
-lr_list=(0.001 0.0005 0.0002)
-rank_ratio_T_list=(1.0 0.9 0.8 0.6)
-rank_ratio_D_list=(0.9 0.7 0.6)
+# pl_list=(96 192 336 720)
+# lbd_list=(0.0 0.1 0.2 0.8)
+# lr_list=(0.001 0.0005 0.0002)
+# rank_ratio_T_list=(1.0 0.9 0.8 0.6)
+# rank_ratio_D_list=(0.9 0.7 0.6)
+# reinit_list=(0 1)
+# auxi_loss_list=(MAE)
+# out_chan_indep_list=(1)
+# lradj_list=(type1)
+# bs_list=(8)
+# use_weights_list=(0)
+# pca_iter_max_list=(500)
+# pca_tol_list=(1e-6)
+
+
+# pl_list=(336 720)
+# lbd_list=(0.2 0.4 0.6 0.8)
+# lr_list=(0.001 0.002 0.005)
+# rank_ratio_T_list=(1.0 0.8 0.6)
+# rank_ratio_D_list=(0.9 0.8 0.6)
+# reinit_list=(0 1)
+# auxi_loss_list=(MAE)
+# out_chan_indep_list=(1)
+# lradj_list=(type1)
+# bs_list=(8)
+# use_weights_list=(0)
+# pca_iter_max_list=(500)
+# pca_tol_list=(1e-6)
+
+
+pl_list=(336 720)
+lbd_list=(0.2 0.8)
+lr_list=(0.001 0.002 0.005)
+rank_ratio_T_list=(1.0 0.8 0.6)
+rank_ratio_D_list=(0.9 0.8 0.6)
 reinit_list=(0 1)
 auxi_loss_list=(MAE)
 out_chan_indep_list=(1)

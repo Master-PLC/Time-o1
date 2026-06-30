@@ -187,11 +187,6 @@ dataset/
 /func
 
 /debug
-analyze/
-!analyze/Example/
-!analyze/Time-o1/
-!analyze/__init__.py
-!analyze/tools.py
 
 /README_public.md
 
